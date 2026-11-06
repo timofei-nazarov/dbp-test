@@ -10,7 +10,7 @@ jobs:
 
       - name: Run tests
         run: |
-          docker compose -f docker-compose.yml -f docker-compose.ci.yml --profile test run --build --rm tests
+          docker compose --profile test run --build --rm tests
 
       - name: Upload test results
         if: always()

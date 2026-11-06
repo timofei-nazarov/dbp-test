@@ -1,7 +1,7 @@
 x-backend: &backend
   build: .
   image: task-manager-backend
-  environment: &backend-environment
+  environment:
     ConnectionStrings__Database: Host=db-csharp;Port=5432;Database=task_manager;Username=postgres;Password=postgres;GSS Encryption Mode=Disable
     Jwt__Key: ${JWT_KEY:-local-development-signing-key-at-least-32-bytes}
     Jwt__Issuer: task-manager

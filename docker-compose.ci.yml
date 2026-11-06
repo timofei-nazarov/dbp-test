@@ -1,4 +1,0 @@
-services:
-  tests:
-    environment:
-      DOTNET_NOLOGO: true
