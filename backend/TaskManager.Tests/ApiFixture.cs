@@ -32,8 +32,10 @@ public sealed class ApiFixture : WebApplicationFactory<Program>, IAsyncLifetime
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseSetting("ConnectionStrings:Database", Environment.GetEnvironmentVariable("TEST_DATABASE")
-            ?? throw new InvalidOperationException("TEST_DATABASE is required."));
+        if (Environment.GetEnvironmentVariable("TEST_DATABASE") is { } database)
+            builder.UseSetting("ConnectionStrings:Database", database);
+        else if (Environment.GetEnvironmentVariable("Database__Host") is null)
+            throw new InvalidOperationException("TEST_DATABASE or Database__Host is required for the test database.");
         builder.UseSetting("Jwt:Key", "integration-test-key-at-least-thirty-two-bytes");
         builder.UseSetting("Storage:Root", Path.Combine(Path.GetTempPath(), "task-manager-tests", Prefix));
         builder.UseSetting("Email:Backend", "console");

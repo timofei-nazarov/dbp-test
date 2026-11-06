@@ -6,6 +6,8 @@ The backend is C# on .NET 10, ASP.NET Core, EF Core, and PostgreSQL. Blazor scre
 
 All application, build, test, formatting, and migration commands run in Docker. Docker Compose is the host-side entry point.
 
+Configure `.env` using `.env.example` before running Compose.
+
 ```sh
 docker compose up --build -d api worker
 ```
@@ -17,7 +19,7 @@ The `migrate` service applies EF migrations before API and worker startup. It cr
 - OpenAPI: http://localhost:18000/swagger.json
 - ReDoc: http://localhost:18000/redoc/
 - Health: http://localhost:18000/health
-- PostgreSQL: internal service `db-csharp:5432`, database `task_manager`, local username/password `postgres`
+- PostgreSQL: internal service `db-csharp:5432`; database name and credentials come from `POSTGRES_DB`, `POSTGRES_USER`, and `POSTGRES_PASSWORD`
 
 The database starts without application users. To create an account, export `BOOTSTRAP_PASSWORD` in your shell and run:
 
@@ -28,6 +30,14 @@ docker compose run --rm -e BOOTSTRAP_USERNAME=admin -e BOOTSTRAP_PASSWORD api --
 The password must have at least eight characters. The command creates a staff account with the `admin` role by default, rejects duplicate usernames, and does not overwrite existing accounts. Optional environment variables are `BOOTSTRAP_EMAIL`, `BOOTSTRAP_IS_STAFF`, and `BOOTSTRAP_ROLE`. API user creation deliberately does not set a password or staff privileges, matching the previous backend.
 
 Stop services with `docker compose stop`. Do not use database-drop commands or `docker compose down -v` during development.
+
+## Demo data
+
+```sh
+docker compose --profile demo run --build --rm seed
+```
+
+See [demo data and API checks](docs/demo-api.md) for context and code entry points.
 
 ## Authentication and API
 

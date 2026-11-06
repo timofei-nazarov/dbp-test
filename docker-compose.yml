@@ -2,8 +2,11 @@ x-backend: &backend
   build: .
   image: task-manager-backend
   environment:
-    ConnectionStrings__Database: Host=db-csharp;Port=5432;Database=task_manager;Username=postgres;Password=postgres;GSS Encryption Mode=Disable
-    Jwt__Key: ${JWT_KEY:-local-development-signing-key-at-least-32-bytes}
+    Database__Host: db-csharp
+    Database__Name: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+    Database__Username: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+    Database__Password: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    Jwt__Key: ${JWT_KEY:?Set JWT_KEY in .env}
     Jwt__Issuer: task-manager
     Jwt__Audience: task-manager
     Storage__Root: /app/media
@@ -39,6 +42,15 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  seed:
+    <<: *backend
+    profiles: ["demo"]
+    command: ["--seed-demo"]
+    env_file: ${DEMO_ENV_FILE:-.env}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   migrate:
     <<: *backend
     command: ["--migrate"]
@@ -49,13 +61,13 @@ services:
   db-csharp:
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: task_manager
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     volumes:
       - csharp_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d task_manager"]
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 2s
       timeout: 5s
       retries: 30
@@ -65,7 +77,10 @@ services:
       context: .
       target: sdk
     environment:
-      TEST_DATABASE: Host=db-test;Port=5432;Database=task_manager_tests;Username=postgres;Password=postgres;GSS Encryption Mode=Disable
+      Database__Host: db-test
+      Database__Name: ${TEST_POSTGRES_DB:?Set TEST_POSTGRES_DB in .env}
+      Database__Username: ${TEST_POSTGRES_USER:?Set TEST_POSTGRES_USER in .env}
+      Database__Password: ${TEST_POSTGRES_PASSWORD:?Set TEST_POSTGRES_PASSWORD in .env}
     command: ["dotnet", "test", "backend/TaskManager.Tests/TaskManager.Tests.csproj", "--no-restore", "--logger", "trx;LogFileName=backend.trx", "--results-directory", "/workspace/TestResults"]
     volumes:
       - ./TestResults:/workspace/TestResults
@@ -77,13 +92,13 @@ services:
     profiles: ["test"]
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: task_manager_tests
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${TEST_POSTGRES_DB:?Set TEST_POSTGRES_DB in .env}
+      POSTGRES_USER: ${TEST_POSTGRES_USER:?Set TEST_POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${TEST_POSTGRES_PASSWORD:?Set TEST_POSTGRES_PASSWORD in .env}
     volumes:
       - csharp_test_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d task_manager_tests"]
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 2s
       timeout: 5s
       retries: 30

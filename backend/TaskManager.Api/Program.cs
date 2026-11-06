@@ -12,12 +12,21 @@ using TaskManager.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 var worker = args.Contains("--worker");
-builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("Database")));
+builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("Database")
+    ?? new Npgsql.NpgsqlConnectionStringBuilder
+    {
+        Host = builder.Configuration["Database:Host"],
+        Database = builder.Configuration["Database:Name"],
+        Username = builder.Configuration["Database:Username"],
+        Password = builder.Configuration["Database:Password"],
+        GssEncryptionMode = Npgsql.GssEncryptionMode.Disable
+    }.ConnectionString));
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddSingleton<FileStorage>();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<EntityWriter>();
+builder.Services.AddScoped<DemoSeeder>();
 builder.Services.AddScoped<StaffWriteFilter>();
 builder.Services.AddScoped<Representations>();
 builder.Services.AddScoped<EmailService>();
@@ -71,6 +80,13 @@ if (args.Contains("--migrate"))
 {
     using var scope = app.Services.CreateScope();
     await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+    return;
+}
+
+if (args.Contains("--seed-demo"))
+{
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<DemoSeeder>().SeedAsync();
     return;
 }
 
