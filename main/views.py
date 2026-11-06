@@ -120,6 +120,8 @@ class TaskTagsViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAuthenticated, AdminOrReadonly)
 
     def get_queryset(self) -> QuerySet:
+        if getattr(self, "swagger_fake_view", False):
+            return Tag.objects.none()
         task_id = self.kwargs["parent_lookup_task_id"]
         return Task.objects.get(pk=task_id).tag.all()
 
@@ -139,6 +141,9 @@ class CountdownJobViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
 class AsyncJobViewSet(viewsets.GenericViewSet):
     serializer_class = JobSerializer
+
+    def get_queryset(self) -> None:
+        return None
 
     def get_object(self) -> AsyncJob:
         lookup_url_kwargs = self.lookup_url_kwarg or self.lookup_field

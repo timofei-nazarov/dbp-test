@@ -1,3 +1,4 @@
 - Never drop the database during development.
 - Do not add comments or docstrings.
 - Write all documents in English.
+- Run all project commands, including tests, formatters, linters, and migrations, in Docker containers, never on the host.

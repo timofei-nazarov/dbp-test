@@ -55,9 +55,10 @@ class RequestFormatter(logging.Formatter):
 
     @staticmethod
     def get_duration(request: HttpRequest) -> str:
-        if not hasattr(request, "start_time"):
+        start_time = getattr(request, "start_time", None)
+        if not isinstance(start_time, datetime):
             return "-"
-        duration = datetime.now() - request.start_time  # type: ignore
+        duration = datetime.now() - start_time
         return f"{duration.seconds} seconds"
 
     @staticmethod

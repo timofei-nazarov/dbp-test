@@ -60,9 +60,7 @@ class TestViewSetBase(APITestCase):
         assert response.status_code == HTTPStatus.OK
         return response.data
 
-    def delete(
-        self, args: Union[str, int, list[Union[str, int]]] = None
-    ) -> Response:
+    def delete(self, args: Union[str, int, list[Union[str, int]]] = None) -> Response:
         response = self.api_client.delete(self.detail_url(args))
         assert response.status_code == HTTPStatus.NO_CONTENT
         return response
