@@ -6,17 +6,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Run tests
-        env:
-          POST_SERVER_ITEM_ACCESS_TOKEN: ${{ secrets.POST_SERVER_ITEM_ACCESS_TOKEN }}
         run: |
-          mkdir reports
-          docker-compose --file docker-compose.ci.yml run \
-          -e POST_SERVER_ITEM_ACCESS_TOKEN="$POST_SERVER_ITEM_ACCESS_TOKEN" \
-          -v $(pwd)/reports:/app/reports --rm api make test
-          cd reports
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml --profile test run --build --rm tests
 
-      - name: Coveralls
-        uses: coverallsapp/github-action@v2
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: TestResults

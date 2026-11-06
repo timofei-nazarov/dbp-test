@@ -1,74 +1,94 @@
-version: '3.7'
+x-backend: &backend
+  build: .
+  image: task-manager-backend
+  environment: &backend-environment
+    ConnectionStrings__Database: Host=db-csharp;Port=5432;Database=task_manager;Username=postgres;Password=postgres;GSS Encryption Mode=Disable
+    Jwt__Key: ${JWT_KEY:-local-development-signing-key-at-least-32-bytes}
+    Jwt__Issuer: task-manager
+    Jwt__Audience: task-manager
+    Storage__Root: /app/media
+    Storage__Bucket: ${AWS_STORAGE_BUCKET_NAME:-}
+    Storage__Region: ${AWS_REGION_NAME:-us-east-1}
+    AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+    AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+    Email__Backend: ${EMAIL_BACKEND_CSHARP:-console}
+    Email__From: ${DEFAULT_FROM_EMAIL:-dev@localhost}
+    Email__Host: ${EMAIL_HOST:-localhost}
+    Email__Port: ${EMAIL_PORT:-25}
+    Email__Username: ${EMAIL_HOST_USER:-}
+    Email__Password: ${EMAIL_HOST_PASSWORD:-}
+    Email__UseTls: ${EMAIL_USE_TLS:-false}
+    Rollbar__AccessToken: ${POST_SERVER_ITEM_ACCESS_TOKEN:-}
+    Rollbar__Environment: ${ROLLBAR_ENVIRONMENT:-development}
+  volumes:
+    - csharp_media:/app/media
 
 services:
   api:
-    build: .
-    volumes:
-      - .:/app:cached
+    <<: *backend
     ports:
-      - "127.0.0.1:18000:8000"
+      - "127.0.0.1:18000:8080"
     depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    environment: &api-environment
-      DJANGO_ENV: dev
-      DJANGO_SECRET_KEY: secret_key
-      DATABASE_NAME: postgres
-      DATABASE_USER: postgres
-      DATABASE_PASSWORD: postgres
-      DATABASE_HOST: db
-      DATABASE_PORT: 5432
-    command: python manage.py runserver 0.0.0.0:8000
-    env_file:
-      - .env
+      migrate:
+        condition: service_completed_successfully
 
-  db:
+  worker:
+    <<: *backend
+    command: ["--worker"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  migrate:
+    <<: *backend
+    command: ["--migrate"]
+    depends_on:
+      db-csharp:
+        condition: service_healthy
+
+  db-csharp:
     image: postgres:15-alpine
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    ports:
-      - "127.0.0.1:15432:5432"
     environment:
+      POSTGRES_DB: task_manager
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-
-  redis:
-    image: redis:6-alpine
-    ports:
-      - "127.0.0.1:16379:6379"
-
-  celery:
-    build: .
-    command: celery --app=task_manager worker --loglevel=INFO
-    environment:
-      <<: *api-environment
     volumes:
-      - .:/app
-    env_file:
-      - .env
-    depends_on:
-      - redis
-
-  flower:
-    build: .
-    command: celery --app=task_manager --broker=redis://redis:6379/0 flower --port=5555
+      - csharp_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d task_manager"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  tests:
+    profiles: ["test"]
+    build:
+      context: .
+      target: sdk
     environment:
-      <<: *api-environment
+      TEST_DATABASE: Host=db-test;Port=5432;Database=task_manager_tests;Username=postgres;Password=postgres;GSS Encryption Mode=Disable
+    command: ["dotnet", "test", "backend/TaskManager.Tests/TaskManager.Tests.csproj", "--no-restore", "--logger", "trx;LogFileName=backend.trx", "--results-directory", "/workspace/TestResults"]
     volumes:
-      - .:/app
-    ports:
-      - "127.0.0.1:15555:5555"
-    env_file:
-      - .env
+      - ./TestResults:/workspace/TestResults
     depends_on:
-      - redis
+      db-test:
+        condition: service_healthy
+
+  db-test:
+    profiles: ["test"]
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: task_manager_tests
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - csharp_test_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d task_manager_tests"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
 
 volumes:
-  postgres_data:
+  csharp_postgres_data:
+  csharp_test_postgres_data:
+  csharp_media:

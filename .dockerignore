@@ -2,11 +2,9 @@
 .env
 .env.*
 !.env.example
-.venv
-venv
-__pycache__
-*.pyc
-.pytest_cache
 .idea
 media
 reports
+**/bin
+**/obj
+TestResults
