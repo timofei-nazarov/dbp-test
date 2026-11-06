@@ -1,19 +1,21 @@
-FROM python:3.11-slim-bookworm
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS sdk
+WORKDIR /workspace
+COPY backend/TaskManager.Api/TaskManager.Api.csproj backend/TaskManager.Api/
+COPY backend/TaskManager.Api/packages.lock.json backend/TaskManager.Api/
+RUN dotnet restore backend/TaskManager.Api/TaskManager.Api.csproj --locked-mode
+COPY backend backend
+COPY TaskManager.slnx .
+COPY .config .config
+RUN dotnet restore backend/TaskManager.Tests/TaskManager.Tests.csproj --locked-mode
 
-ENV PYTHONFAULTHANDLER=1 \
-    PYTHONUNBUFFERED=1 \
-    POETRY_VIRTUALENVS_CREATE=false \
-    DJANGO_SETTINGS_MODULE=task_manager.settings
+FROM sdk AS publish
+RUN dotnet publish backend/TaskManager.Api/TaskManager.Api.csproj -c Release --no-restore -o /out
 
-RUN pip install --no-cache-dir poetry==1.6.1
-
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
-
-COPY pyproject.toml poetry.lock ./
-RUN poetry install --no-root --no-interaction --no-ansi
-
-COPY . /app
-
-EXPOSE 8000
-
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+COPY --from=publish /out .
+RUN mkdir /app/media && chown -R app:app /app/media
+USER app
+ENV ASPNETCORE_HTTP_PORTS=8080
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "TaskManager.Api.dll"]

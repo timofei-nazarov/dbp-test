@@ -1,74 +1,109 @@
-version: '3.7'
+x-backend: &backend
+  build: .
+  image: task-manager-backend
+  environment:
+    Database__Host: db-csharp
+    Database__Name: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+    Database__Username: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+    Database__Password: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    Jwt__Key: ${JWT_KEY:?Set JWT_KEY in .env}
+    Jwt__Issuer: task-manager
+    Jwt__Audience: task-manager
+    Storage__Root: /app/media
+    Storage__Bucket: ${AWS_STORAGE_BUCKET_NAME:-}
+    Storage__Region: ${AWS_REGION_NAME:-us-east-1}
+    AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+    AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+    Email__Backend: ${EMAIL_BACKEND_CSHARP:-console}
+    Email__From: ${DEFAULT_FROM_EMAIL:-dev@localhost}
+    Email__Host: ${EMAIL_HOST:-localhost}
+    Email__Port: ${EMAIL_PORT:-25}
+    Email__Username: ${EMAIL_HOST_USER:-}
+    Email__Password: ${EMAIL_HOST_PASSWORD:-}
+    Email__UseTls: ${EMAIL_USE_TLS:-false}
+    Rollbar__AccessToken: ${POST_SERVER_ITEM_ACCESS_TOKEN:-}
+    Rollbar__Environment: ${ROLLBAR_ENVIRONMENT:-development}
+  volumes:
+    - csharp_media:/app/media
 
 services:
   api:
-    build: .
-    volumes:
-      - .:/app:cached
+    <<: *backend
     ports:
-      - "127.0.0.1:18000:8000"
+      - "127.0.0.1:18000:8080"
     depends_on:
-      db:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    <<: *backend
+    command: ["--worker"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  seed:
+    <<: *backend
+    profiles: ["demo"]
+    command: ["--seed-demo"]
+    env_file: ${DEMO_ENV_FILE:-.env}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  migrate:
+    <<: *backend
+    command: ["--migrate"]
+    depends_on:
+      db-csharp:
         condition: service_healthy
-      redis:
-        condition: service_started
-    environment: &api-environment
-      DJANGO_ENV: dev
-      DJANGO_SECRET_KEY: secret_key
-      DATABASE_NAME: postgres
-      DATABASE_USER: postgres
-      DATABASE_PASSWORD: postgres
-      DATABASE_HOST: db
-      DATABASE_PORT: 5432
-    command: python manage.py runserver 0.0.0.0:8000
-    env_file:
-      - .env
 
-  db:
+  db-csharp:
     image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - csharp_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 2s
       timeout: 5s
-      retries: 10
-    ports:
-      - "127.0.0.1:15432:5432"
+      retries: 30
+  tests:
+    profiles: ["test"]
+    build:
+      context: .
+      target: sdk
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-
-  redis:
-    image: redis:6-alpine
-    ports:
-      - "127.0.0.1:16379:6379"
-
-  celery:
-    build: .
-    command: celery --app=task_manager worker --loglevel=INFO
-    environment:
-      <<: *api-environment
+      Database__Host: db-test
+      Database__Name: ${TEST_POSTGRES_DB:?Set TEST_POSTGRES_DB in .env}
+      Database__Username: ${TEST_POSTGRES_USER:?Set TEST_POSTGRES_USER in .env}
+      Database__Password: ${TEST_POSTGRES_PASSWORD:?Set TEST_POSTGRES_PASSWORD in .env}
+    command: ["dotnet", "test", "backend/TaskManager.Tests/TaskManager.Tests.csproj", "--no-restore", "--logger", "trx;LogFileName=backend.trx", "--results-directory", "/workspace/TestResults"]
     volumes:
-      - .:/app
-    env_file:
-      - .env
+      - ./TestResults:/workspace/TestResults
     depends_on:
-      - redis
+      db-test:
+        condition: service_healthy
 
-  flower:
-    build: .
-    command: celery --app=task_manager --broker=redis://redis:6379/0 flower --port=5555
+  db-test:
+    profiles: ["test"]
+    image: postgres:15-alpine
     environment:
-      <<: *api-environment
+      POSTGRES_DB: ${TEST_POSTGRES_DB:?Set TEST_POSTGRES_DB in .env}
+      POSTGRES_USER: ${TEST_POSTGRES_USER:?Set TEST_POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${TEST_POSTGRES_PASSWORD:?Set TEST_POSTGRES_PASSWORD in .env}
     volumes:
-      - .:/app
-    ports:
-      - "127.0.0.1:15555:5555"
-    env_file:
-      - .env
-    depends_on:
-      - redis
+      - csharp_test_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 2s
+      timeout: 5s
+      retries: 30
 
 volumes:
-  postgres_data:
+  csharp_postgres_data:
+  csharp_test_postgres_data:
+  csharp_media:
