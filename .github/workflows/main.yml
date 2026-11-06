@@ -1,0 +1,22 @@
+name: Main
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Run tests
+        env:
+          POST_SERVER_ITEM_ACCESS_TOKEN: ${{ secrets.POST_SERVER_ITEM_ACCESS_TOKEN }}
+        run: |
+          mkdir reports
+          docker-compose --file docker-compose.ci.yml run \
+          -e POST_SERVER_ITEM_ACCESS_TOKEN="$POST_SERVER_ITEM_ACCESS_TOKEN" \
+          -v $(pwd)/reports:/app/reports --rm api make test
+          cd reports
+
+      - name: Coveralls
+        uses: coverallsapp/github-action@v2

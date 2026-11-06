@@ -1,25 +1,7 @@
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
 .coverage
-.coverage.*
-htmlcov/
-.tox/
-.nox/
-build/
-dist/
-*.egg-info/
-.venv/
-venv/
-env/
+.idea
 .env
-.env.*
-!.env.example
-*.local.env
-.idea/
-.vscode/
-.DS_Store
-Thumbs.db

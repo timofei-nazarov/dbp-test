@@ -1,0 +1,3 @@
+- Never drop the database during development.
+- Do not add comments or docstrings.
+- Write all documents in English.
