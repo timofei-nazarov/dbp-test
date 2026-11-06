@@ -1,6 +1,6 @@
 # Task Manager backend
 
-The backend is C# on .NET 10, ASP.NET Core, EF Core, and PostgreSQL. Blazor screens are a separate phase.
+The backend uses C# on .NET 10, ASP.NET Core, EF Core, and PostgreSQL. Blazor screens are a separate phase.
 
 ## Run
 
@@ -12,7 +12,7 @@ Configure `.env` using `.env.example` before running Compose.
 docker compose up --build -d api worker
 ```
 
-The `migrate` service applies EF migrations before API and worker startup. It creates the new schema without deleting an existing database. The C# database uses the independent `csharp_postgres_data` volume. The legacy `postgres_data` volume is retained. Uploaded files and generated reports use `csharp_media`.
+The `migrate` service applies EF Core database migrations before API and worker startup. Database files are persisted in `csharp_postgres_data`. Uploaded files and generated reports use `csharp_media`.
 
 - API: http://localhost:18000/api/tasks/
 - Swagger: http://localhost:18000/swagger/
@@ -27,7 +27,7 @@ The database starts without application users. To create an account, export `BOO
 docker compose run --rm -e BOOTSTRAP_USERNAME=admin -e BOOTSTRAP_PASSWORD api --create-user
 ```
 
-The password must have at least eight characters. The command creates a staff account with the `admin` role by default, rejects duplicate usernames, and does not overwrite existing accounts. Optional environment variables are `BOOTSTRAP_EMAIL`, `BOOTSTRAP_IS_STAFF`, and `BOOTSTRAP_ROLE`. API user creation deliberately does not set a password or staff privileges, matching the previous backend.
+The password must have at least eight characters. The command creates a staff account with the `admin` role by default, rejects duplicate usernames, and does not overwrite existing accounts. Optional environment variables are `BOOTSTRAP_EMAIL`, `BOOTSTRAP_IS_STAFF`, and `BOOTSTRAP_ROLE`. API user creation does not set a password or staff privileges.
 
 Stop services with `docker compose stop`. Do not use database-drop commands or `docker compose down -v` during development.
 
@@ -47,8 +47,8 @@ See [demo data and API checks](docs/demo-api.md) for context and code entry poin
 | --- | --- | --- |
 | `/api/users/` | GET, POST | List or create users; `name` filters first name case-insensitively |
 | `/api/users/{id}/` | GET, PUT, PATCH, DELETE | User details and changes |
-| `/api/current-user/` | GET, PUT, PATCH, POST | Current profile; POST creates a user as in the original viewset |
-| `/api/current-user/{ignoredId}/` | GET, PUT, PATCH, DELETE | Current profile; the lookup value is ignored as in the original viewset |
+| `/api/current-user/` | GET, PUT, PATCH, POST | Current profile; POST creates a user |
+| `/api/current-user/{ignoredId}/` | GET, PUT, PATCH, DELETE | Current profile; the lookup value is ignored |
 | `/api/tasks/` | GET, POST | List or create tasks |
 | `/api/tasks/{id}/` | GET, PUT, PATCH, DELETE | Task details and changes |
 | `/api/users/{id}/tasks/` | GET | Tasks assigned to the specified user |
@@ -60,27 +60,27 @@ See [demo data and API checks](docs/demo-api.md) for context and code entry poin
 | `/api/countdown/` | POST | Queue a background job with integer `seconds` |
 | `/api/jobs/{id}/` | GET | Job status, result, or errors |
 
-Trailing slashes are accepted. JSON properties use the original snake_case names, including singular `tag`. Lists are unpaginated and sorted by ID. Task filters are `condition`, `author`, `executor`, and repeated `tag` parameters. All specified tags must match.
+Trailing slashes are accepted. JSON properties use snake_case names, including singular `tag`. Lists are unpaginated and sorted by ID. Task filters are `condition`, `author`, `executor`, and repeated `tag` parameters. All specified tags must match.
 
-User responses contain `id`, `username`, `first_name`, `last_name`, `email`, `role`, and `avatar_picture`. Avatars are uploaded using multipart form data and accept JPEG/JPG/PNG extensions up to 1 MiB. Validation checks extensions and size, as before; it does not decode image content. User model fields such as date of birth and phone remain stored but are not exposed by the existing API contract.
+User responses contain `id`, `username`, `first_name`, `last_name`, `email`, `role`, and `avatar_picture`. Avatars are uploaded using multipart form data and accept JPEG/JPG/PNG extensions up to 1 MiB. Validation checks extensions and size; it does not decode image content. User model fields such as date of birth and phone are stored but are not exposed by the API.
 
-## Preserved behavior
+## Permissions and task behavior
 
 All main data routes require authentication. Authenticated users can read all records. Writes depend on `IsStaff`, not `Role`; a non-staff user cannot edit their own profile. Background job creation requires authentication but does not require staff privileges.
 
-Creating a task with nested `author`, `executor`, or `tag` data creates new records rather than selecting existing ones. Writable nested updates remain unsupported and return a server error. Scalar task updates work normally. Deleting a user sets task author/executor references to null. Deleting a tag through a task route deletes the tag globally, including links to other tasks.
+Creating a task with nested `author`, `executor`, or `tag` data creates new records. Nested relationship updates are unsupported and return a server error. Scalar task updates are supported. Deleting a user sets task author/executor references to null. Deleting a tag through a task route deletes the tag globally, including links to other tasks.
 
 The seven status strings are `new_task`, `in_development`, `in_qa`, `in_code_review`, `ready_for_release`, `released`, and `archived`. Transitions are unrestricted. Dates are UTC calendar dates. Creation/update dates are managed by the backend and cannot be set through API input.
 
-Task assignment does not automatically send email. Correcting these behaviors belongs to follow-up tasks after migration.
+Task assignment does not automatically send email.
 
 ## Background jobs and email
 
-The C# worker replaces Celery, Redis, and Flower. The queue and job results are persisted in PostgreSQL. Workers claim jobs using row locks with `SKIP LOCKED`, renew leases while running, and recover expired leases after a restart. Processing has at-least-once semantics; SMTP delivery may repeat if a worker stops after sending and before recording success.
+A separate worker processes background jobs. The queue and job results are persisted in PostgreSQL. Workers claim jobs using row locks with `SKIP LOCKED`, renew leases while running, and recover expired leases after a restart. Processing has at-least-once semantics; SMTP delivery may repeat if a worker stops after sending and before recording success.
 
-A countdown creates the same `test data` report content. Creation returns 201 and a `Location` pointing to the job. A job has `started`, `success`, or `failure` status. Successful retrieval returns 201 and a `Location` pointing to the file; failure responses include `errors.non_field_errors`. Unknown IDs return 404.
+A countdown creates a report containing `test data`. Creation returns 201 and a `Location` pointing to the job. A job has `started`, `success`, or `failure` status. Successful retrieval returns 201 and a `Location` pointing to the file; failure responses include `errors.non_field_errors`. Unknown IDs return 404.
 
-Explicit assignment notifications can be queued without changing assignment behavior:
+Queue an assignment notification explicitly:
 
 ```sh
 docker compose run --rm api --send-assignment 123
@@ -96,11 +96,11 @@ docker compose run --rm -v /absolute/path/email.json:/app/email.json:ro api --se
 
 ## Storage and diagnostics
 
-Local storage is the default. Set `AWS_STORAGE_BUCKET_NAME`, `AWS_REGION_NAME`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY` to use S3. Avatars use public-read object ACLs; report files are private and receive signed URLs valid for ten minutes. The bucket must allow the corresponding ACLs and access. Existing Django data, passwords, tokens, and files are not imported.
+Local storage is the default. Set `AWS_STORAGE_BUCKET_NAME`, `AWS_REGION_NAME`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY` to use S3. Avatars use public-read object ACLs; report files are private and receive signed URLs valid for ten minutes. The bucket must allow the corresponding ACLs and access.
 
 Request logs include method, path, status, authenticated user ID, and elapsed time. `GET /rollbar-error` produces a diagnostic 500 response. Setting `POST_SERVER_ITEM_ACCESS_TOKEN` enables Rollbar error reports; `ROLLBAR_ENVIRONMENT` defaults to `development`. Failed error reporting does not replace the API response.
 
-Management screens will be built in Blazor. New Relic is not enabled in the image. A future deployment can add the [.NET agent](https://docs.newrelic.com/docs/apm/agents/net-agent/other-installation/understanding-net-agent-environment-variables/).
+The application does not include management screens. New Relic is not enabled in the image.
 
 ## Tests and development
 
@@ -131,4 +131,4 @@ docker compose --profile test run --rm --no-deps -v "$PWD/backend:/workspace/bac
 
 Remove generated comments/docstrings before committing migrations, following repository rules. Apply migrations with `docker compose run --rm migrate`. Restart API and worker on the rebuilt image after model changes.
 
-The migration uses the official [ASP.NET Core JWT middleware](https://learn.microsoft.com/aspnet/core/security/authentication/configure-jwt-bearer-authentication?view=aspnetcore-10.0), [Npgsql EF Core provider](https://www.npgsql.org/efcore/release-notes/10.0.html), and [Rollbar item API](https://docs.rollbar.com/reference/create-item).
+Reference documentation: [ASP.NET Core JWT middleware](https://learn.microsoft.com/aspnet/core/security/authentication/configure-jwt-bearer-authentication?view=aspnetcore-10.0), [Npgsql EF Core provider](https://www.npgsql.org/efcore/release-notes/10.0.html), and [Rollbar item API](https://docs.rollbar.com/reference/create-item).
