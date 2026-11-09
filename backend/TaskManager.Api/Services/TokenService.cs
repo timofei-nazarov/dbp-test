@@ -32,7 +32,7 @@ public sealed class TokenService(IConfiguration configuration, TimeProvider cloc
         var token = new JwtSecurityToken(
             issuer: ValidationParameters.ValidIssuer,
             audience: ValidationParameters.ValidAudience,
-            claims: [new("user_id", user.Id.ToString()), new("token_type", type), new("jti", Guid.NewGuid().ToString("N"))],
+            claims: [new("user_id", user.Id.ToString()), new("token_type", type), new("is_staff", user.IsStaff ? "true" : "false"), new("jti", Guid.NewGuid().ToString("N"))],
             notBefore: now,
             expires: now.Add(lifetime),
             signingCredentials: new(ValidationParameters.IssuerSigningKey, SecurityAlgorithms.HmacSha256));
