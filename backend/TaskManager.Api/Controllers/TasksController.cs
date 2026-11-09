@@ -79,6 +79,20 @@ public sealed class TasksController(AppDbContext db, EntityWriter writer, Repres
                 throw ApiException.Invalid(key, "Select a valid choice. That choice is not one of the available choices.");
             query = key == "author" ? query.Where(x => x.AuthorId == id) : query.Where(x => x.ExecutorId == id);
         }
+        DateOnly? from = null, to = null;
+        foreach (var key in new[] { "date_to_finish_from", "date_to_finish_to" })
+        {
+            var values = filters[key].Where(x => !string.IsNullOrEmpty(x)).ToArray();
+            if (values.Length == 0) continue;
+            if (values.Length > 1) throw ApiException.Invalid(key, "Date has wrong format. Use one of these formats instead: YYYY-MM-DD.");
+            var date = RequestData.ParseDate(key, values[0]);
+            if (key == "date_to_finish_from") from = date;
+            else to = date;
+        }
+        if (from > to)
+            throw ApiException.Invalid("date_to_finish_to", "Ensure this date is not earlier than date_to_finish_from.");
+        if (from is { } start) query = query.Where(x => x.DateToFinish >= start);
+        if (to is { } end) query = query.Where(x => x.DateToFinish <= end);
         foreach (var title in filters["tag"].Distinct())
         {
             if (string.IsNullOrEmpty(title)) continue;

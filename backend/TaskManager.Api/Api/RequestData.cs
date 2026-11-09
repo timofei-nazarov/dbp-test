@@ -71,7 +71,12 @@ public sealed class RequestData(JsonObject values, IFormFile? avatar = null)
     public DateOnly? Date(string key)
     {
         if (!Has(key) || values[key] is null) return null;
-        if (!DateOnly.TryParseExact(values[key]!.ToString(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var result))
+        return ParseDate(key, values[key]!.ToString());
+    }
+
+    public static DateOnly ParseDate(string key, string? text)
+    {
+        if (!DateOnly.TryParseExact(text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var result))
             throw ApiException.Invalid(key, "Date has wrong format. Use one of these formats instead: YYYY-MM-DD.");
         return result;
     }
