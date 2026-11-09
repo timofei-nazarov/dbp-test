@@ -202,6 +202,119 @@ public sealed class BackendTests(ApiFixture fixture)
         Assert.Equal(HttpStatusCode.BadRequest, (await fixture.Reader.GetAsync("/api/tasks/?tag=missing-tag")).StatusCode);
     }
 
+    private static long[] Ids(JsonArray tasks) => tasks.Select(x => x!["id"]!.GetValue<long>()).ToArray();
+
+    [Fact]
+    public async Task TaskDateRangeFiltersAreInclusiveAndSkipTasksWithoutDueDate()
+    {
+        var tag = fixture.Unique("range");
+        var tagged = new[] { new { title = tag } };
+        var early = await CreateTaskAsync(new { title = "early", date_to_finish = "2030-01-10", tag = tagged });
+        var middle = await CreateTaskAsync(new { title = "middle", date_to_finish = "2030-01-20", tag = tagged });
+        var late = await CreateTaskAsync(new { title = "late", date_to_finish = "2030-01-30", tag = tagged });
+        var undated = await CreateTaskAsync(new { title = "undated", tag = tagged });
+        long Id(JsonObject task) => task["id"]!.GetValue<long>();
+        async Task<long[]> QueryAsync(string range) => Ids((await fixture.Reader.GetFromJsonAsync<JsonArray>($"/api/tasks/?tag={tag}{range}"))!);
+        Assert.Equal([Id(middle), Id(late)], await QueryAsync("&date_to_finish_from=2030-01-20"));
+        Assert.Equal([Id(early), Id(middle)], await QueryAsync("&date_to_finish_to=2030-01-20"));
+        Assert.Equal([Id(middle)], await QueryAsync("&date_to_finish_from=2030-01-20&date_to_finish_to=2030-01-20"));
+        Assert.Empty(await QueryAsync("&date_to_finish_from=2030-01-11&date_to_finish_to=2030-01-19"));
+        Assert.Equal([Id(early), Id(middle), Id(late), Id(undated)], await QueryAsync(""));
+    }
+
+    [Fact]
+    public async Task TaskDateRangeFiltersCombineWithExecutorAndTagAndUserRoute()
+    {
+        var title = fixture.Unique("combined");
+        long earlyId, lateId;
+        using (var scope = fixture.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var tag = new Tag { Title = title };
+            var early = new WorkTask { Title = "early", DateToFinish = new DateOnly(2030, 3, 1), ExecutorId = fixture.ReaderId, Tags = [tag] };
+            var late = new WorkTask { Title = "late", DateToFinish = new DateOnly(2030, 3, 31), ExecutorId = fixture.ReaderId, Tags = [tag] };
+            db.Tasks.AddRange(early, late);
+            await db.SaveChangesAsync();
+            earlyId = early.Id;
+            lateId = late.Id;
+        }
+        var byExecutor = await fixture.Reader.GetFromJsonAsync<JsonArray>($"/api/tasks/?executor={fixture.ReaderId}&tag={title}&date_to_finish_from=2030-03-15");
+        Assert.Equal([lateId], Ids(byExecutor!));
+        var byUser = await fixture.Reader.GetFromJsonAsync<JsonArray>($"/api/users/{fixture.ReaderId}/tasks/?tag={title}&date_to_finish_to=2030-03-15");
+        Assert.Equal([earlyId], Ids(byUser!));
+    }
+
+    [Fact]
+    public async Task TaskDateRangeFiltersValidateInput()
+    {
+        async Task AssertInvalidAsync(string query, string key)
+        {
+            var response = await fixture.Reader.GetAsync($"/api/tasks/?{query}");
+            var body = await ObjectAsync(response, HttpStatusCode.BadRequest);
+            Assert.NotEmpty(body[key]!.AsArray());
+        }
+        await AssertInvalidAsync("date_to_finish_from=2030-13-01", "date_to_finish_from");
+        await AssertInvalidAsync("date_to_finish_to=not-a-date", "date_to_finish_to");
+        await AssertInvalidAsync("date_to_finish_from=2030-01-01&date_to_finish_from=2030-01-02", "date_to_finish_from");
+        await AssertInvalidAsync("date_to_finish_from=2030-02-01&date_to_finish_to=2030-01-01", "date_to_finish_to");
+        Assert.Equal(HttpStatusCode.OK, (await fixture.Reader.GetAsync("/api/tasks/?date_to_finish_from=")).StatusCode);
+    }
+
+    [Fact]
+    public async Task OverdueFlagFollowsDueDateAndCondition()
+    {
+        var today = DateOnly.FromDateTime(fixture.Clock.GetUtcNow().UtcDateTime);
+        var yesterday = today.AddDays(-1).ToString("yyyy-MM-dd");
+        var executor = fixture.Unique("overdue");
+        var cases = new (object Payload, bool Expected)[]
+        {
+            (new { title = "a", date_to_finish = yesterday, condition = "new_task" }, true),
+            (new { title = "b", date_to_finish = yesterday, condition = "in_qa" }, true),
+            (new { title = "c", date_to_finish = yesterday, condition = "released" }, false),
+            (new { title = "d", date_to_finish = yesterday, condition = "archived" }, false),
+            (new { title = "e", date_to_finish = today.ToString("yyyy-MM-dd") }, false),
+            (new { title = "f", date_to_finish = today.AddDays(1).ToString("yyyy-MM-dd") }, false),
+            (new { title = "g" }, false),
+        };
+        var tag = fixture.Unique("overdue-tag");
+        var created = new List<(JsonObject Task, bool Expected)>();
+        foreach (var (payload, expected) in cases)
+        {
+            var json = JsonSerializer.SerializeToNode(payload)!.AsObject();
+            json["tag"] = new JsonArray(new JsonObject { ["title"] = tag });
+            if (created.Count == 0) json["executor"] = new JsonObject { ["username"] = executor };
+            var task = await ObjectAsync(await fixture.Staff.PostAsJsonAsync("/api/tasks/", json), HttpStatusCode.Created);
+            Assert.Equal(expected, task["is_overdue"]!.GetValue<bool>());
+            created.Add((task, expected));
+        }
+        var listed = await fixture.Reader.GetFromJsonAsync<JsonArray>($"/api/tasks/?tag={tag}");
+        Assert.Equal(created.Count, listed!.Count);
+        for (var i = 0; i < created.Count; i++)
+        {
+            Assert.Equal(created[i].Expected, listed[i]!["is_overdue"]!.GetValue<bool>());
+            var id = created[i].Task["id"]!.GetValue<long>();
+            var single = await ObjectAsync(await fixture.Reader.GetAsync($"/api/tasks/{id}/"));
+            Assert.Equal(created[i].Expected, single["is_overdue"]!.GetValue<bool>());
+        }
+        var executorId = created[0].Task["executor"]!["id"]!.GetValue<long>();
+        var viaUser = await ObjectAsync(await fixture.Reader.GetAsync($"/api/users/{executorId}/tasks/{created[0].Task["id"]!.GetValue<long>()}/"));
+        Assert.True(viaUser["is_overdue"]!.GetValue<bool>());
+    }
+
+    [Fact]
+    public async Task OverdueFlagIsRecomputedOnUpdate()
+    {
+        var today = DateOnly.FromDateTime(fixture.Clock.GetUtcNow().UtcDateTime);
+        var task = await CreateTaskAsync(new { title = "recompute", date_to_finish = today.AddDays(5).ToString("yyyy-MM-dd") });
+        Assert.False(task["is_overdue"]!.GetValue<bool>());
+        var url = $"/api/tasks/{task["id"]!.GetValue<long>()}/";
+        async Task<bool> PatchAsync(object payload) =>
+            (await ObjectAsync(await fixture.Staff.PatchAsJsonAsync(url, payload)))["is_overdue"]!.GetValue<bool>();
+        Assert.True(await PatchAsync(new { date_to_finish = today.AddDays(-1).ToString("yyyy-MM-dd"), is_overdue = false }));
+        Assert.False(await PatchAsync(new { condition = "released" }));
+        Assert.True(await PatchAsync(new { condition = "in_qa" }));
+    }
+
     [Fact]
     public async Task NestedTagDeletionDeletesSharedTagGlobally()
     {
