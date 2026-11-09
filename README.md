@@ -60,7 +60,7 @@ See [demo data and API checks](docs/demo-api.md) for context and code entry poin
 | `/api/countdown/` | POST | Queue a background job with integer `seconds` |
 | `/api/jobs/{id}/` | GET | Job status, result, or errors |
 
-Trailing slashes are accepted. JSON properties use snake_case names, including singular `tag`. Lists are unpaginated and sorted by ID. Task filters are `condition`, `author`, `executor`, and repeated `tag` parameters. All specified tags must match.
+Trailing slashes are accepted. JSON properties use snake_case names, including singular `tag`. Lists are unpaginated and sorted by ID. Task filters are `condition`, `author`, `executor`, `date_to_finish_from`, `date_to_finish_to`, and repeated `tag` parameters. All specified tags must match. Date filters use `YYYY-MM-DD`, are inclusive, and exclude tasks without `date_to_finish`.
 
 User responses contain `id`, `username`, `first_name`, `last_name`, `email`, `role`, and `avatar_picture`. Avatars are uploaded using multipart form data and accept JPEG/JPG/PNG extensions up to 1 MiB. Validation checks extensions and size; it does not decode image content. User model fields such as date of birth and phone are stored but are not exposed by the API.
 
@@ -70,7 +70,7 @@ All main data routes require authentication. Authenticated users can read all re
 
 Creating a task with nested `author`, `executor`, or `tag` data creates new records. Nested relationship updates are unsupported and return a server error. Scalar task updates are supported. Deleting a user sets task author/executor references to null. Deleting a tag through a task route deletes the tag globally, including links to other tasks.
 
-The seven status strings are `new_task`, `in_development`, `in_qa`, `in_code_review`, `ready_for_release`, `released`, and `archived`. Transitions are unrestricted. Dates are UTC calendar dates. Creation/update dates are managed by the backend and cannot be set through API input.
+The seven status strings are `new_task`, `in_development`, `in_qa`, `in_code_review`, `ready_for_release`, `released`, and `archived`. Transitions are unrestricted. Dates are UTC calendar dates. Creation/update dates are managed by the backend and cannot be set through API input. Task responses contain `is_overdue`, which is true when `date_to_finish` is before today (UTC) and the status is not `released` or `archived`.
 
 Task assignment does not automatically send email.
 
