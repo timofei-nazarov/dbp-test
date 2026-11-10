@@ -3,7 +3,7 @@ using TaskManager.Api.Services;
 
 namespace TaskManager.Api.Api;
 
-public sealed class Representations(FileStorage storage, IHttpContextAccessor accessor)
+public sealed class Representations(FileStorage storage, IHttpContextAccessor accessor, TimeProvider clock)
 {
     public UserResponse User(User user) => new(user.Id, user.Username, user.FirstName, user.LastName, user.Email, user.Role,
         user.AvatarPicture is null ? null : Absolute(storage.PublicUrl(user.AvatarPicture)));
@@ -12,7 +12,11 @@ public sealed class Representations(FileStorage storage, IHttpContextAccessor ac
 
     public TaskResponse Task(WorkTask task) => new(task.Id, task.Title, task.Description, task.DateCreated, task.DateUpdated,
         task.DateToFinish, task.Condition, task.Priority, task.Author is null ? null : User(task.Author),
-        task.Executor is null ? null : User(task.Executor), task.Tags.OrderBy(x => x.Id).Select(Tag));
+        task.Executor is null ? null : User(task.Executor), task.Tags.OrderBy(x => x.Id).Select(Tag), IsOverdue(task));
+
+    private bool IsOverdue(WorkTask task) => task.DateToFinish is { } due
+        && due < DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime)
+        && task.Condition is not ("released" or "archived");
 
     public static object Job(BackgroundJob job)
     {
