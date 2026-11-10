@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Build, format and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      JWT_KEY: ci-signing-key-at-least-32-bytes-long
+      POSTGRES_DB: task_manager
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ci-postgres-password
+      TEST_POSTGRES_DB: task_manager_tests
+      TEST_POSTGRES_USER: postgres
+      TEST_POSTGRES_PASSWORD: ci-postgres-password
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build test image
+        run: docker compose --profile test build tests
+
+      - name: Build solution
+        run: docker compose --profile test run --rm --no-deps tests dotnet build TaskManager.slnx -c Release --no-restore
+
+      - name: Check formatting and style
+        run: docker compose --profile test run --rm --no-deps tests dotnet format TaskManager.slnx --no-restore --verify-no-changes
+
+      - name: Run tests
+        run: docker compose --profile test run --rm tests
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: TestResults
+          if-no-files-found: ignore
+
+      - name: Stop containers
+        if: always()
+        run: docker compose --profile test down
