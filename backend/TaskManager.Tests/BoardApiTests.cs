@@ -52,4 +52,23 @@ public sealed class BoardApiTests(ApiFixture fixture)
         var error = await ObjectAsync(await fixture.Staff.PatchAsJsonAsync($"/api/tasks/{task["id"]!.GetValue<long>()}/", new { condition = "unknown" }), HttpStatusCode.BadRequest);
         Assert.NotEmpty(error["condition"]!.AsArray());
     }
+
+    [Fact]
+    public async Task BoardAndLoginPagesAreServedWithoutToken()
+    {
+        using var client = fixture.CreateClient();
+        string? script = null;
+        foreach (var path in new[] { "/", "/board", "/login" })
+        {
+            var response = await client.GetAsync(path);
+            var html = await response.Content.ReadAsStringAsync();
+            Assert.True(response.StatusCode == HttpStatusCode.OK, $"{path}: {response.StatusCode}: {html}");
+            Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
+            var match = System.Text.RegularExpressions.Regex.Match(html, "<script[^>]*src=\"([^\"]*blazor\\.web[^\"]*\\.js)\"");
+            Assert.True(match.Success, $"{path}: no blazor.web script in {html}");
+            script = match.Groups[1].Value;
+        }
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(script)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/tasks/")).StatusCode);
+    }
 }
