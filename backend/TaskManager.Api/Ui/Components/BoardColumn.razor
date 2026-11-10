@@ -1,0 +1,27 @@
+<section aria-labelledby="column-title-@Status" class="column">
+    <h2 id="column-title-@Status">@BoardStatus.Label(Status) <span class="count">(@(Loading ? "…" : Tasks.Count))</span></h2>
+    @if (Loading)
+    {
+        <p class="column-note">Loading...</p>
+    }
+    else if (Tasks.Count == 0)
+    {
+        <p class="column-note empty">No tasks in this status</p>
+    }
+    else
+    {
+        <ul class="cards">
+            @foreach (var item in Tasks)
+            {
+                <li @key="item.Id">@Card(item)</li>
+            }
+        </ul>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string Status { get; set; } = "";
+    [Parameter] public IReadOnlyList<TaskResponse> Tasks { get; set; } = [];
+    [Parameter] public bool Loading { get; set; }
+    [Parameter, EditorRequired] public RenderFragment<TaskResponse> Card { get; set; } = default!;
+}

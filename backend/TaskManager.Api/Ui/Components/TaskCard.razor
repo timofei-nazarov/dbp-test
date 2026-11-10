@@ -1,0 +1,36 @@
+<article class="card @(Overdue ? "overdue" : null)" aria-labelledby="task-title-@Item.Id" tabindex="@(IsStaff ? null : "0")">
+    <h3 id="task-title-@Item.Id" class="card-title">@Item.Title</h3>
+    <p class="card-line">@(BoardRules.ExecutorName(Item.Executor) is { } name ? $"Executor: {name}" : "No executor")</p>
+    <p class="card-line due">
+        @(BoardRules.DueText(Item.DateToFinish) is { } due ? $"Due: {due}" : "No due date")
+        @if (Overdue)
+        {
+            <strong class="overdue-badge"> OVERDUE</strong>
+        }
+    </p>
+    @if (IsStaff)
+    {
+        <StatusMenu TaskId="Item.Id"
+                    Condition="Item.Condition"
+                    IsOpen="MenuOpen"
+                    IsSaving="Saving"
+                    FocusRequested="FocusRequested"
+                    OnOpen="OnOpen"
+                    OnClose="OnClose"
+                    OnSelect="OnSelect"
+                    OnFocusHandled="OnFocusHandled" />
+    }
+</article>
+
+@code {
+    [Parameter, EditorRequired] public TaskResponse Item { get; set; } = default!;
+    [Parameter] public bool Overdue { get; set; }
+    [Parameter] public bool IsStaff { get; set; }
+    [Parameter] public bool MenuOpen { get; set; }
+    [Parameter] public bool Saving { get; set; }
+    [Parameter] public bool FocusRequested { get; set; }
+    [Parameter] public EventCallback<long> OnOpen { get; set; }
+    [Parameter] public EventCallback<long> OnClose { get; set; }
+    [Parameter] public EventCallback<(long Id, string Status)> OnSelect { get; set; }
+    [Parameter] public EventCallback<long> OnFocusHandled { get; set; }
+}

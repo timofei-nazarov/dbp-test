@@ -9,6 +9,7 @@ using TaskManager.Api.Api;
 using TaskManager.Api.Data;
 using TaskManager.Api.Domain;
 using TaskManager.Api.Services;
+using TaskManager.Api.Ui;
 
 var builder = WebApplication.CreateBuilder(args);
 var worker = args.Contains("--worker");
@@ -32,6 +33,10 @@ builder.Services.AddScoped<Representations>();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddHttpClient<ErrorReporter>(client => client.Timeout = TimeSpan.FromSeconds(3));
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+builder.Services.AddHttpClient("ui-api", client => client.BaseAddress = new Uri((builder.Configuration["Ui:ApiBaseUrl"] ?? "http://localhost:8080").TrimEnd('/') + "/"));
+builder.Services.AddScoped<UserSession>();
+builder.Services.AddScoped<TaskApiClient>();
 builder.Services.AddControllers().AddJsonOptions(options => options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -180,7 +185,13 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapGet("/rollbar-error", () => { throw new InvalidOperationException("Generated diagnostic error."); });
 app.UseAuthentication();
 app.UseAuthorization();
-if (!worker) app.MapControllers();
+app.UseAntiforgery();
+if (!worker)
+{
+    app.MapControllers();
+    app.MapStaticAssets();
+    app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
+}
 await app.RunAsync();
 
 public partial class Program;
