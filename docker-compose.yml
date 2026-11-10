@@ -23,6 +23,7 @@ x-backend: &backend
     Email__UseTls: ${EMAIL_USE_TLS:-false}
     Rollbar__AccessToken: ${POST_SERVER_ITEM_ACCESS_TOKEN:-}
     Rollbar__Environment: ${ROLLBAR_ENVIRONMENT:-development}
+    Ui__ApiBaseUrl: http://localhost:8080
   volumes:
     - csharp_media:/app/media
 
