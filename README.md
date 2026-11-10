@@ -1,6 +1,6 @@
 # Task Manager backend
 
-The backend uses C# on .NET 10, ASP.NET Core, EF Core, and PostgreSQL. Blazor screens are a separate phase.
+The backend uses C# on .NET 10, ASP.NET Core, EF Core, and PostgreSQL. The task board (Blazor) is served by the API process and calls the API over HTTP.
 
 ## Run
 
@@ -15,6 +15,8 @@ docker compose up --build -d api worker
 The `migrate` service applies EF Core database migrations before API and worker startup. Database files are persisted in `csharp_postgres_data`. Uploaded files and generated reports use `csharp_media`.
 
 - API: http://localhost:18000/api/tasks/
+- Task board: http://localhost:18000/board
+- Sign-in page: http://localhost:18000/login
 - Swagger: http://localhost:18000/swagger/
 - OpenAPI: http://localhost:18000/swagger.json
 - ReDoc: http://localhost:18000/redoc/
@@ -41,7 +43,7 @@ See [demo data and API checks](docs/demo-api.md) for context and code entry poin
 
 ## Authentication and API
 
-`POST /api/token/` accepts `username` and `password` and returns `access` and `refresh`. Access tokens last five minutes; refresh tokens last one day. `POST /api/token/refresh/` accepts `refresh` and returns a new access token. Send `Authorization: Bearer <access>` to protected routes. Swagger supports bearer authentication through its Authorize button.
+`POST /api/token/` accepts `username` and `password` and returns `access` and `refresh`. Access tokens carry an `is_staff` claim and last five minutes; refresh tokens last one day. `POST /api/token/refresh/` accepts `refresh` and returns a new access token. Send `Authorization: Bearer <access>` to protected routes. Swagger supports bearer authentication through its Authorize button.
 
 | Route | Methods | Behavior |
 | --- | --- | --- |
@@ -100,7 +102,7 @@ Local storage is the default. Set `AWS_STORAGE_BUCKET_NAME`, `AWS_REGION_NAME`, 
 
 Request logs include method, path, status, authenticated user ID, and elapsed time. `GET /rollbar-error` produces a diagnostic 500 response. Setting `POST_SERVER_ITEM_ACCESS_TOKEN` enables Rollbar error reports; `ROLLBAR_ENVIRONMENT` defaults to `development`. Failed error reporting does not replace the API response.
 
-The application does not include management screens. New Relic is not enabled in the image.
+The only screens are the task board at `/board` (also `/`) and the sign-in page at `/login`; there are no other management screens. The board calls the API at the address in `Ui__ApiBaseUrl` (default `http://localhost:8080`, set in `docker-compose.yml`). New Relic is not enabled in the image.
 
 ## Tests and development
 
