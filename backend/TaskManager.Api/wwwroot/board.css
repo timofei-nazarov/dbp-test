@@ -1,0 +1,266 @@
+:root {
+    color-scheme: light;
+    --text: #1a1a1a;
+    --muted: #4a4a4a;
+    --border: #8a8f98;
+    --surface: #ffffff;
+    --background: #f3f4f6;
+    --danger: #a30d0d;
+    --danger-fill: #fdecec;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    color: var(--text);
+    background: var(--background);
+    line-height: 1.4;
+}
+
+.page {
+    padding: 16px;
+}
+
+.page h1 {
+    margin: 0 0 8px;
+    font-size: 1.5rem;
+}
+
+.hint {
+    margin: 0 0 12px;
+    color: var(--muted);
+}
+
+.note {
+    margin: 0 0 12px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+}
+
+.error {
+    margin: 0 0 12px;
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.columns {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(220px, 1fr));
+    gap: 12px;
+    align-items: start;
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+
+.column {
+    background: #e6e8ec;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    min-width: 0;
+}
+
+.column h2 {
+    margin: 0 0 8px;
+    font-size: 1rem;
+}
+
+.count {
+    font-weight: 400;
+    color: var(--muted);
+}
+
+.column-note {
+    margin: 0;
+    color: var(--muted);
+}
+
+.column-note.empty {
+    font-style: italic;
+}
+
+.cards {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+}
+
+.card-title {
+    margin: 0 0 4px;
+    font-size: 1rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.card-line {
+    margin: 0 0 2px;
+    color: var(--muted);
+}
+
+.card.overdue {
+    border: 2px solid var(--danger);
+    background: var(--danger-fill);
+}
+
+.card.overdue .due {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.status-menu {
+    position: relative;
+    margin-top: 6px;
+}
+
+.status-button,
+button {
+    font: inherit;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 10px;
+    cursor: pointer;
+}
+
+.status-button {
+    width: 100%;
+    text-align: left;
+}
+
+.status-button[aria-disabled="true"],
+button[aria-disabled="true"] {
+    opacity: 0.6;
+    cursor: progress;
+}
+
+.status-list {
+    position: absolute;
+    z-index: 10;
+    left: 0;
+    right: 0;
+    margin: 2px 0 0;
+    padding: 0;
+    list-style: none;
+    background: var(--surface);
+    border: 1px solid var(--text);
+    border-radius: 4px;
+}
+
+.status-option {
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.status-option[aria-selected="true"] {
+    font-weight: 700;
+}
+
+.status-option.active {
+    background: #1a1a1a;
+    color: #ffffff;
+}
+
+.load-error {
+    padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--danger);
+}
+
+.dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.dialog {
+    width: min(420px, calc(100vw - 32px));
+    padding: 16px;
+    background: var(--surface);
+    border-radius: 6px;
+}
+
+.dialog h2 {
+    margin: 0 0 8px;
+    font-size: 1.15rem;
+}
+
+.dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+button.danger {
+    color: #ffffff;
+    background: var(--danger);
+    border-color: var(--danger);
+}
+
+.login {
+    max-width: 360px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+}
+
+.field label {
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+
+.field input {
+    font: inherit;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+}
+
+:focus-visible {
+    outline: 2px dashed #1a1a1a;
+    outline-offset: 2px;
+}
+
+.dialog-backdrop :focus-visible,
+.status-option.active {
+    outline-color: #1a1a1a;
+}
+
+button.danger:focus-visible {
+    outline-color: #ffffff;
+    box-shadow: 0 0 0 4px #1a1a1a;
+}
