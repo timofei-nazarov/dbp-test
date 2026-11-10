@@ -134,3 +134,9 @@ docker compose --profile test run --rm --no-deps -v "$PWD/backend:/workspace/bac
 Remove generated comments/docstrings before committing migrations, following repository rules. Apply migrations with `docker compose run --rm migrate`. Restart API and worker on the rebuilt image after model changes.
 
 Reference documentation: [ASP.NET Core JWT middleware](https://learn.microsoft.com/aspnet/core/security/authentication/configure-jwt-bearer-authentication?view=aspnetcore-10.0), [Npgsql EF Core provider](https://www.npgsql.org/efcore/release-notes/10.0.html), and [Rollbar item API](https://docs.rollbar.com/reference/create-item).
+
+## Continuous integration
+
+The workflow `.github/workflows/ci.yml` (name `CI`) runs automatically on pull requests into `develop`. It has one job, `Build, format and tests`, with these steps: build the test image, build the solution, check formatting and style, and run the tests. They use the same Docker commands as in "Tests and development". The tests start PostgreSQL through the `db-test` service.
+
+Test results are uploaded as the `backend-test-results` artifact.
