@@ -1,0 +1,62 @@
+@implements IAsyncDisposable
+
+<div class="dialog-backdrop">
+    <div class="dialog"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="archive-title"
+         aria-describedby="archive-text"
+         @ref="dialog"
+         @onkeydown="OnKeyDown">
+        <h2 id="archive-title">Archive this task?</h2>
+        <p id="archive-text">"@Title" will move to Archived.</p>
+        <div class="dialog-actions">
+            <button type="button" @ref="cancelButton" @onclick="OnCancel">Cancel</button>
+            <button type="button" class="danger" @onclick="OnConfirm">Archive</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private ElementReference dialog;
+    private ElementReference cancelButton;
+    private IJSObjectReference? trap;
+
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter, EditorRequired] public IJSObjectReference Module { get; set; } = default!;
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await cancelButton.FocusAsync();
+            trap = await Module.InvokeAsync<IJSObjectReference>("trapFocus", dialog);
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            await OnCancel.InvokeAsync();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (trap is null)
+        {
+            return;
+        }
+        try
+        {
+            await trap.InvokeVoidAsync("dispose");
+            await trap.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+}
