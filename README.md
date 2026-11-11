@@ -62,7 +62,7 @@ See [demo data and API checks](docs/demo-api.md) for context and code entry poin
 | `/api/countdown/` | POST | Queue a background job with integer `seconds` |
 | `/api/jobs/{id}/` | GET | Job status, result, or errors |
 
-Trailing slashes are accepted. JSON properties use snake_case names, including singular `tag`. Lists are unpaginated and sorted by ID. Task filters are `condition`, `author`, `executor`, `date_to_finish_from`, `date_to_finish_to`, and repeated `tag` parameters. All specified tags must match. Date filters use `YYYY-MM-DD`, are inclusive, and exclude tasks without `date_to_finish`.
+Trailing slashes are accepted. JSON properties use snake_case names, including singular `tag`. Lists are unpaginated and sorted by ID. Task filters are `condition`, `author`, `executor`, `date_to_finish_from`, `date_to_finish_to`, and repeated `tag` parameters. All specified tags must match. Date filters use `YYYY-MM-DD`, are inclusive, and exclude tasks without `date_to_finish`. Repeating `date_to_finish_from` or `date_to_finish_to` returns 400, even when some or all of the values are empty; a single empty value is ignored.
 
 User responses contain `id`, `username`, `first_name`, `last_name`, `email`, `role`, and `avatar_picture`. Avatars are uploaded using multipart form data and accept JPEG/JPG/PNG extensions up to 1 MiB. Validation checks extensions and size; it does not decode image content. User model fields such as date of birth and phone are stored but are not exposed by the API.
 

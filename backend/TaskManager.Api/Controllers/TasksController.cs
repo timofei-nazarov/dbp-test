@@ -82,10 +82,10 @@ public sealed class TasksController(AppDbContext db, EntityWriter writer, Repres
         DateOnly? from = null, to = null;
         foreach (var key in new[] { "date_to_finish_from", "date_to_finish_to" })
         {
-            var values = filters[key].Where(x => !string.IsNullOrEmpty(x)).ToArray();
-            if (values.Length == 0) continue;
-            if (values.Length > 1) throw ApiException.Invalid(key, "Date has wrong format. Use one of these formats instead: YYYY-MM-DD.");
-            var date = RequestData.ParseDate(key, values[0]);
+            var values = filters[key];
+            if (values.Count > 1) throw ApiException.Invalid(key, "Date has wrong format. Use one of these formats instead: YYYY-MM-DD.");
+            if (string.IsNullOrEmpty(values.ToString())) continue;
+            var date = RequestData.ParseDate(key, values.ToString());
             if (key == "date_to_finish_from") from = date;
             else to = date;
         }

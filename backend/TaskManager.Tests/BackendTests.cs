@@ -256,8 +256,14 @@ public sealed class BackendTests(ApiFixture fixture)
         await AssertInvalidAsync("date_to_finish_from=2030-13-01", "date_to_finish_from");
         await AssertInvalidAsync("date_to_finish_to=not-a-date", "date_to_finish_to");
         await AssertInvalidAsync("date_to_finish_from=2030-01-01&date_to_finish_from=2030-01-02", "date_to_finish_from");
+        await AssertInvalidAsync("date_to_finish_from=2030-01-01&date_to_finish_from=", "date_to_finish_from");
+        await AssertInvalidAsync("date_to_finish_from=&date_to_finish_from=2030-01-01", "date_to_finish_from");
+        await AssertInvalidAsync("date_to_finish_from=&date_to_finish_from=", "date_to_finish_from");
+        await AssertInvalidAsync("date_to_finish_to=2030-01-01&date_to_finish_to=", "date_to_finish_to");
+        await AssertInvalidAsync("date_to_finish_to=&date_to_finish_to=", "date_to_finish_to");
         await AssertInvalidAsync("date_to_finish_from=2030-02-01&date_to_finish_to=2030-01-01", "date_to_finish_to");
         Assert.Equal(HttpStatusCode.OK, (await fixture.Reader.GetAsync("/api/tasks/?date_to_finish_from=")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await fixture.Reader.GetAsync("/api/tasks/?date_to_finish_to=")).StatusCode);
     }
 
     [Fact]
