@@ -11,7 +11,7 @@
     @if (IsStaff)
     {
         <StatusMenu TaskId="Item.Id"
-                    Condition="Item.Condition"
+                    Condition="@Item.Condition"
                     IsOpen="MenuOpen"
                     IsSaving="Saving"
                     FocusRequested="FocusRequested"
