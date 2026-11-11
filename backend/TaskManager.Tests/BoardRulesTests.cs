@@ -9,7 +9,7 @@ public sealed class BoardRulesTests
     private static readonly DateOnly Today = new(2026, 11, 10);
 
     private static TaskResponse Task(long id, string condition, UserResponse? executor = null, DateOnly? due = null) =>
-        new(id, $"Task {id}", null, Today, Today, due, condition, null, null, executor, [], false);
+        new(id, $"Task {id}", null, Today, Today, due, condition, null, null, executor, [], BoardRules.IsOverdue(due, condition, Today));
 
     private static UserResponse User(string username, string firstName = "", string lastName = "") =>
         new(1, username, firstName, lastName, "", "developer", null);
