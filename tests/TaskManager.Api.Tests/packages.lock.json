@@ -617,13 +617,37 @@
       "taskmanager.api": {
         "type": "Project",
         "dependencies": {
+          "Microsoft.AspNetCore.Authentication.JwtBearer": "[10.0.14, )",
+          "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )",
+          "Swashbuckle.AspNetCore": "[10.3.1, )",
+          "TaskManager.Contracts": "[1.0.0, )",
+          "TaskManager.Domain": "[1.0.0, )",
+          "TaskManager.Infrastructure": "[1.0.0, )",
+          "TaskManager.Web": "[1.0.0, )"
+        }
+      },
+      "taskmanager.contracts": {
+        "type": "Project"
+      },
+      "taskmanager.domain": {
+        "type": "Project"
+      },
+      "taskmanager.infrastructure": {
+        "type": "Project",
+        "dependencies": {
           "AWSSDK.S3": "[4.0.104.10, )",
           "MailKit": "[4.18.2, )",
-          "Microsoft.AspNetCore.Authentication.JwtBearer": "[10.0.14, )",
           "Microsoft.EntityFrameworkCore": "[10.0.14, )",
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.14, )",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )",
-          "Swashbuckle.AspNetCore": "[10.3.1, )"
+          "TaskManager.Domain": "[1.0.0, )"
+        }
+      },
+      "taskmanager.web": {
+        "type": "Project",
+        "dependencies": {
+          "System.IdentityModel.Tokens.Jwt": "[8.19.2, )",
+          "TaskManager.Contracts": "[1.0.0, )"
         }
       }
     }
