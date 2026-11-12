@@ -630,7 +630,10 @@
         "type": "Project"
       },
       "taskmanager.domain": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "TaskManager.Contracts": "[1.0.0, )"
+        }
       },
       "taskmanager.infrastructure": {
         "type": "Project",
@@ -639,6 +642,7 @@
           "MailKit": "[4.18.2, )",
           "Microsoft.EntityFrameworkCore": "[10.0.14, )",
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.14, )",
+          "Microsoft.Extensions.Configuration.Binder": "[10.0.14, )",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )",
           "TaskManager.Domain": "[1.0.0, )"
         }
