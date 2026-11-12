@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using Microsoft.JSInterop;
 
-namespace TaskManager.Api.Ui;
+namespace TaskManager.Web;
 
 public sealed class UserSession(IHttpClientFactory factory, ProtectedSessionStorage storage, TimeProvider clock)
 {

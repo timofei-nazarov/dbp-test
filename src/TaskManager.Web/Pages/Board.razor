@@ -11,7 +11,7 @@
         <h1>Board</h1>
         @if (ready)
         {
-            <p class="page-summary">@BoardRules.Summary(loading || loadFailed ? null : tasks, today, isStaff)</p>
+            <p class="page-summary">@BoardRules.Summary(loading || loadFailed ? null : tasks, isStaff)</p>
         }
     </header>
     <p class="hint">Tab moves between cards. Enter or Space opens the status list. Arrow keys choose, Enter confirms, Esc cancels.</p>
@@ -38,7 +38,6 @@
                     <BoardColumn Status="@column.Status" Tasks="column.Tasks" Loading="loading">
                         <Card Context="item">
                             <TaskCard Item="item"
-                                      Overdue="BoardRules.IsOverdue(item.DateToFinish, item.Condition, today)"
                                       IsStaff="isStaff"
                                       MenuOpen="openMenuTaskId == item.Id"
                                       Saving="saving.Contains(item.Id)"
@@ -68,7 +67,6 @@
     private List<TaskResponse> tasks = [];
     private IReadOnlyList<(string Status, IReadOnlyList<TaskResponse> Tasks)> columns = BoardRules.Group([]);
     private readonly HashSet<long> saving = [];
-    private DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
     private bool ready;
     private bool loading = true;
     private bool loadFailed;
@@ -85,7 +83,7 @@
         {
             return;
         }
-        module = await JS.InvokeAsync<IJSObjectReference>("import", "./board.js");
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/TaskManager.Web/board.js");
         keyGuard = await module.InvokeAsync<IJSObjectReference>("installKeyGuard");
         if (!await Session.RestoreAsync())
         {
@@ -94,11 +92,6 @@
         }
         isStaff = Session.IsStaff;
         ready = true;
-        var localDate = await module.InvokeAsync<string>("localDate");
-        if (DateOnly.TryParseExact(localDate, "yyyy-MM-dd", out var parsed))
-        {
-            today = parsed;
-        }
         await LoadAsync();
         StateHasChanged();
     }
@@ -160,7 +153,7 @@
             focusTaskId = task.Id;
             return;
         }
-        if (choice.Status == "archived")
+        if (choice.Status == TaskStatuses.Archived)
         {
             pendingArchive = task;
             return;
@@ -187,12 +180,12 @@
             return;
         }
         var task = tasks.FirstOrDefault(item => item.Id == pending.Id);
-        if (task is null || task.Condition == "archived" || saving.Contains(task.Id))
+        if (task is null || task.Condition == TaskStatuses.Archived || saving.Contains(task.Id))
         {
             focusTaskId = pending.Id;
             return;
         }
-        await MoveAsync(task, "archived");
+        await MoveAsync(task, TaskStatuses.Archived);
     }
 
     private async Task MoveAsync(TaskResponse original, string status)
@@ -211,10 +204,19 @@
         saving.Add(original.Id);
         StateHasChanged();
 
-        var result = await Api.SetConditionAsync(original.Id, status);
+        var (result, saved) = await Api.SetConditionAsync(original.Id, status);
 
         saving.Remove(original.Id);
-        if (result != SaveResult.Ok)
+        if (result == SaveResult.Ok && saved is not null)
+        {
+            var current = tasks.FindIndex(item => item.Id == original.Id);
+            if (current >= 0 && tasks[current].Condition == status)
+            {
+                tasks[current] = saved;
+                Regroup();
+            }
+        }
+        else if (result != SaveResult.Ok)
         {
             var current = tasks.FindIndex(item => item.Id == original.Id);
             if (current >= 0 && tasks[current].Condition == status)

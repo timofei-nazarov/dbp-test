@@ -1,57 +1,25 @@
-using TaskManager.Api.Api;
-using TaskManager.Api.Ui;
+using TaskManager.Contracts;
+using TaskManager.Web;
 using Xunit;
 
-namespace TaskManager.Tests;
+namespace TaskManager.Web.Tests;
 
 public sealed class BoardRulesTests
 {
     private static readonly DateOnly Today = new(2026, 11, 10);
 
-    private static TaskResponse Task(long id, string condition, UserResponse? executor = null, DateOnly? due = null) =>
-        new(id, $"Task {id}", null, Today, Today, due, condition, null, null, executor, [], BoardRules.IsOverdue(due, condition, Today));
+    private static TaskResponse Task(long id, string condition, UserResponse? executor = null, DateOnly? due = null, bool overdue = false) =>
+        new(id, $"Task {id}", null, Today, Today, due, condition, null, null, executor, [], overdue);
 
     private static UserResponse User(string username, string firstName = "", string lastName = "") =>
         new(1, username, firstName, lastName, "", "developer", null);
-
-    [Theory]
-    [InlineData("new_task")]
-    [InlineData("in_development")]
-    [InlineData("in_qa")]
-    [InlineData("in_code_review")]
-    [InlineData("ready_for_release")]
-    public void OverdueRequiresPastDueDateAndActiveStatus(string condition)
-    {
-        Assert.True(BoardRules.IsOverdue(Today.AddDays(-1), condition, Today));
-    }
-
-    [Fact]
-    public void DueTodayAndFutureDatesAreNotOverdue()
-    {
-        Assert.False(BoardRules.IsOverdue(Today, "in_qa", Today));
-        Assert.False(BoardRules.IsOverdue(Today.AddDays(3), "in_qa", Today));
-    }
-
-    [Theory]
-    [InlineData("released")]
-    [InlineData("archived")]
-    public void ReleasedAndArchivedAreNeverOverdue(string condition)
-    {
-        Assert.False(BoardRules.IsOverdue(Today.AddDays(-30), condition, Today));
-    }
-
-    [Fact]
-    public void MissingDueDateIsNeverOverdue()
-    {
-        Assert.False(BoardRules.IsOverdue(null, "new_task", Today));
-    }
 
     [Fact]
     public void GroupReturnsSevenColumnsInBoardOrderWithEmptyColumnsKept()
     {
         var columns = BoardRules.Group([Task(2, "in_qa"), Task(1, "in_qa")]);
 
-        Assert.Equal(BoardStatus.Values, columns.Select(column => column.Status));
+        Assert.Equal(TaskStatuses.All, columns.Select(column => column.Status));
         Assert.Equal(7, columns.Count);
         Assert.Equal([1L, 2L], columns.Single(column => column.Status == "in_qa").Tasks.Select(task => task.Id));
         Assert.Equal(6, columns.Count(column => column.Status != "in_qa" && column.Tasks.Count == 0));
@@ -60,7 +28,7 @@ public sealed class BoardRulesTests
     [Fact]
     public void GroupPlacesEveryTaskInExactlyOneColumn()
     {
-        var tasks = BoardStatus.Values.Select((status, index) => Task(index + 1, status)).Append(Task(8, "new_task")).ToList();
+        var tasks = TaskStatuses.All.Select((status, index) => Task(index + 1, status)).Append(Task(8, "new_task")).ToList();
 
         var columns = BoardRules.Group(tasks);
 
@@ -111,10 +79,10 @@ public sealed class BoardRulesTests
 
     private static List<TaskResponse> SixTasksWithFourOverdue() =>
     [
-        Task(1, "new_task", due: Today.AddDays(-1)),
-        Task(2, "in_qa", due: Today.AddDays(-5)),
-        Task(3, "ready_for_release", due: Today.AddDays(-2)),
-        Task(4, "in_development", due: Today.AddDays(-9)),
+        Task(1, "new_task", due: Today.AddDays(-1), overdue: true),
+        Task(2, "in_qa", due: Today.AddDays(-5), overdue: true),
+        Task(3, "ready_for_release", due: Today.AddDays(-2), overdue: true),
+        Task(4, "in_development", due: Today.AddDays(-9), overdue: true),
         Task(5, "released", due: Today.AddDays(-9)),
         Task(6, "in_qa", due: Today.AddDays(1))
     ];
@@ -124,36 +92,35 @@ public sealed class BoardRulesTests
     {
         var tasks = SixTasksWithFourOverdue();
 
-        Assert.Equal("6 tasks · 4 overdue · You can change status", BoardRules.Summary(tasks, Today, true));
-        Assert.Equal("6 tasks · 4 overdue · View only", BoardRules.Summary(tasks, Today, false));
+        Assert.Equal("6 tasks · 4 overdue · You can change status", BoardRules.Summary(tasks, true));
+        Assert.Equal("6 tasks · 4 overdue · View only", BoardRules.Summary(tasks, false));
     }
 
     [Fact]
     public void SummaryTextUsesSingularAndZero()
     {
-        Assert.Equal("1 task · 0 overdue · View only", BoardRules.Summary([Task(1, "new_task")], Today, false));
-        Assert.Equal("0 tasks · 0 overdue · You can change status", BoardRules.Summary([], Today, true));
+        Assert.Equal("1 task · 0 overdue · View only", BoardRules.Summary([Task(1, "new_task")], false));
+        Assert.Equal("0 tasks · 0 overdue · You can change status", BoardRules.Summary([], true));
     }
 
     [Fact]
     public void SummaryTextWithoutTasksShowsOnlyAccess()
     {
-        Assert.Equal("You can change status", BoardRules.Summary(null, Today, true));
-        Assert.Equal("View only", BoardRules.Summary(null, Today, false));
+        Assert.Equal("You can change status", BoardRules.Summary(null, true));
+        Assert.Equal("View only", BoardRules.Summary(null, false));
     }
 
     [Fact]
-    public void CountOverdueIgnoresReleasedArchivedAndMissingDates()
+    public void CountOverdueCountsOnlyTasksFlaggedByApi()
     {
         List<TaskResponse> tasks =
         [
-            Task(1, "new_task", due: Today.AddDays(-1)),
-            Task(2, "released", due: Today.AddDays(-1)),
-            Task(3, "archived", due: Today.AddDays(-1)),
-            Task(4, "in_qa"),
-            Task(5, "in_qa", due: Today)
+            Task(1, "new_task", due: Today.AddDays(-1), overdue: true),
+            Task(2, "in_qa", due: Today.AddDays(-3), overdue: true),
+            Task(3, "in_qa", due: Today.AddDays(-1), overdue: false),
+            Task(4, "in_qa")
         ];
 
-        Assert.Equal(1, BoardRules.CountOverdue(tasks, Today));
+        Assert.Equal(2, BoardRules.CountOverdue(tasks));
     }
 }

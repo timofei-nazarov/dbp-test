@@ -6,10 +6,10 @@ using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
-using TaskManager.Api.Ui;
+using TaskManager.Web;
 using Xunit;
 
-namespace TaskManager.Tests;
+namespace TaskManager.Web.Tests;
 
 public sealed class UserSessionTests
 {

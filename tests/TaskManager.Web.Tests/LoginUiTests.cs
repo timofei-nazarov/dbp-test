@@ -4,10 +4,10 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using TaskManager.Api.Ui.Components;
+using TaskManager.Web.Components;
 using Xunit;
 
-namespace TaskManager.Tests;
+namespace TaskManager.Web.Tests;
 
 public sealed class LoginUiTests
 {

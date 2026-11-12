@@ -15,12 +15,12 @@
             tabindex="-1"
             @ref="list"
             aria-label="Change status"
-            aria-activedescendant="status-option-@TaskId-@BoardStatus.Values[activeIndex]"
+            aria-activedescendant="status-option-@TaskId-@TaskStatuses.All[activeIndex]"
             @onkeydown="OnListKeyDown"
             @onblur="CloseAsync">
-            @for (var index = 0; index < BoardStatus.Values.Count; index++)
+            @for (var index = 0; index < TaskStatuses.All.Count; index++)
             {
-                var status = BoardStatus.Values[index];
+                var status = TaskStatuses.All[index];
                 var position = index;
                 <li id="status-option-@TaskId-@status"
                     role="option"
@@ -54,7 +54,7 @@
     {
         if (IsOpen && !wasOpen)
         {
-            activeIndex = Math.Max(0, BoardStatus.Values.ToList().IndexOf(Condition));
+            activeIndex = Math.Max(0, TaskStatuses.All.ToList().IndexOf(Condition));
         }
     }
 
@@ -104,7 +104,7 @@
 
     private async Task OnListKeyDown(KeyboardEventArgs args)
     {
-        var last = BoardStatus.Values.Count - 1;
+        var last = TaskStatuses.All.Count - 1;
         switch (args.Key)
         {
             case "ArrowDown":
@@ -122,7 +122,7 @@
             case "Enter":
             case " ":
             case "Spacebar":
-                await ChooseAsync(BoardStatus.Values[activeIndex]);
+                await ChooseAsync(TaskStatuses.All[activeIndex]);
                 break;
             case "Escape":
                 focusButton = true;

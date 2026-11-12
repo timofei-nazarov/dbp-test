@@ -2,9 +2,9 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using TaskManager.Api.Api;
+using TaskManager.Contracts;
 
-namespace TaskManager.Api.Ui;
+namespace TaskManager.Web;
 
 public enum SaveResult
 {
@@ -39,7 +39,7 @@ public sealed class TaskApiClient(IHttpClientFactory factory, UserSession sessio
         return await response.Content.ReadFromJsonAsync<UserResponse>(Json);
     }
 
-    public async Task<SaveResult> SetConditionAsync(long id, string condition)
+    public async Task<(SaveResult Result, TaskResponse? Task)> SetConditionAsync(long id, string condition)
     {
         using var response = await SendAsync(() => new HttpRequestMessage(HttpMethod.Patch, $"api/tasks/{id}/")
         {
@@ -47,13 +47,24 @@ public sealed class TaskApiClient(IHttpClientFactory factory, UserSession sessio
         });
         if (response is null)
         {
-            return SaveResult.Failed;
+            return (SaveResult.Failed, null);
         }
         if (response.StatusCode == HttpStatusCode.Forbidden)
         {
-            return SaveResult.Forbidden;
+            return (SaveResult.Forbidden, null);
         }
-        return response.IsSuccessStatusCode ? SaveResult.Ok : SaveResult.Failed;
+        if (!response.IsSuccessStatusCode)
+        {
+            return (SaveResult.Failed, null);
+        }
+        try
+        {
+            return (SaveResult.Ok, await response.Content.ReadFromJsonAsync<TaskResponse>(Json));
+        }
+        catch (JsonException)
+        {
+            return (SaveResult.Ok, null);
+        }
     }
 
     private async Task<HttpResponseMessage?> SendAsync(Func<HttpRequestMessage> create)

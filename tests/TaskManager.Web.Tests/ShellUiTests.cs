@@ -4,13 +4,13 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using TaskManager.Api.Api;
-using TaskManager.Api.Ui.Components;
-using TaskManager.Api.Ui.Layout;
-using TaskManager.Api.Ui.Pages;
+using TaskManager.Contracts;
+using TaskManager.Web.Components;
+using TaskManager.Web.Layout;
+using TaskManager.Web.Pages;
 using Xunit;
 
-namespace TaskManager.Tests;
+namespace TaskManager.Web.Tests;
 
 public sealed class ShellUiTests
 {
@@ -82,7 +82,7 @@ public sealed class ShellUiTests
     [Fact]
     public void RoutesUseMainLayoutAsDefault()
     {
-        var routes = File.ReadAllText(FindFile("Ui", "Routes.razor"));
+        var routes = File.ReadAllText(FindFile("Routes.razor"));
 
         Assert.Contains("DefaultLayout=\"typeof(MainLayout)\"", routes);
         Assert.Contains("<LayoutView Layout=\"typeof(MainLayout)\">", routes);
@@ -93,7 +93,7 @@ public sealed class ShellUiTests
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null)
         {
-            var candidate = Path.Combine([directory.FullName, "backend", "TaskManager.Api", .. parts]);
+            var candidate = Path.Combine([directory.FullName, "src", "TaskManager.Web", .. parts]);
             if (File.Exists(candidate))
             {
                 return candidate;

@@ -4,11 +4,11 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using TaskManager.Api.Api;
-using TaskManager.Api.Ui.Components;
+using TaskManager.Contracts;
+using TaskManager.Web.Components;
 using Xunit;
 
-namespace TaskManager.Tests;
+namespace TaskManager.Web.Tests;
 
 public sealed class BoardUiTests
 {
@@ -51,6 +51,17 @@ public sealed class BoardUiTests
 
         Assert.Contains($"Status: {name}", StatusButton(html).Text);
         Assert.DoesNotContain("Item.Condition", html);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task TaskCardShowsOverdueBadgeFromItemFlag(bool overdue)
+    {
+        var html = await Render(Task(1, "Late task", "in_qa") with { IsOverdue = overdue }, false);
+
+        Assert.Equal(overdue, html.Contains("OVERDUE"));
+        Assert.Equal(overdue, Regex.IsMatch(html, "class=\"card overdue\""));
     }
 
     [Fact]

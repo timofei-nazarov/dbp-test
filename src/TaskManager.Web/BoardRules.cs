@@ -1,17 +1,14 @@
 using System.Globalization;
-using TaskManager.Api.Api;
+using TaskManager.Contracts;
 
-namespace TaskManager.Api.Ui;
+namespace TaskManager.Web;
 
 public static class BoardRules
 {
-    public static bool IsOverdue(DateOnly? due, string condition, DateOnly today) =>
-        due is not null && due < today && condition is not ("released" or "archived");
-
     public static IReadOnlyList<(string Status, IReadOnlyList<TaskResponse> Tasks)> Group(IEnumerable<TaskResponse> tasks)
     {
         var ordered = tasks.OrderBy(task => task.Id).ToList();
-        return BoardStatus.Values
+        return TaskStatuses.All
             .Select(status => (status, (IReadOnlyList<TaskResponse>)ordered.Where(task => task.Condition == status).ToList()))
             .ToList();
     }
@@ -39,10 +36,10 @@ public static class BoardRules
         return fallback.Length > 0 ? fallback.ToUpperInvariant() : "?";
     }
 
-    public static int CountOverdue(IEnumerable<TaskResponse> tasks, DateOnly today) =>
-        tasks.Count(task => IsOverdue(task.DateToFinish, task.Condition, today));
+    public static int CountOverdue(IEnumerable<TaskResponse> tasks) =>
+        tasks.Count(task => task.IsOverdue);
 
-    public static string Summary(IReadOnlyCollection<TaskResponse>? tasks, DateOnly today, bool isStaff)
+    public static string Summary(IReadOnlyCollection<TaskResponse>? tasks, bool isStaff)
     {
         var access = isStaff ? "You can change status" : "View only";
         if (tasks is null)
@@ -50,7 +47,7 @@ public static class BoardRules
             return access;
         }
         var total = tasks.Count;
-        return $"{total} {(total == 1 ? "task" : "tasks")} · {CountOverdue(tasks, today)} overdue · {access}";
+        return $"{total} {(total == 1 ? "task" : "tasks")} · {CountOverdue(tasks)} overdue · {access}";
     }
 
     private static string FirstElement(string? text)

@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using Xunit;
 
-namespace TaskManager.Tests;
+namespace TaskManager.Web.Tests;
 
 public sealed class StylesheetTests
 {
@@ -13,7 +13,7 @@ public sealed class StylesheetTests
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null)
         {
-            var candidate = Path.Combine(directory.FullName, "backend", "TaskManager.Api", "wwwroot", "board.css");
+            var candidate = Path.Combine(directory.FullName, "src", "TaskManager.Web", "wwwroot", "board.css");
             if (File.Exists(candidate))
             {
                 return File.ReadAllText(candidate);
