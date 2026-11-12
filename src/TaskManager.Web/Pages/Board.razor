@@ -1,0 +1,252 @@
+@page "/"
+@page "/board"
+@implements IAsyncDisposable
+@inject UserSession Session
+@inject TaskApiClient Api
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<main class="page">
+    <header class="page-header">
+        <h1>Board</h1>
+        @if (ready)
+        {
+            <p class="page-summary">@BoardRules.Summary(loading || loadFailed ? null : tasks, isStaff)</p>
+        }
+    </header>
+    <p class="hint">Tab moves between cards. Enter or Space opens the status list. Arrow keys choose, Enter confirms, Esc cancels.</p>
+    <div role="status" aria-live="polite" class="live">
+        @if (errorMessage is not null)
+        {
+            <p class="error">@errorMessage</p>
+        }
+        <span class="visually-hidden">@announcement</span>
+    </div>
+    <div id="board-root" inert="@(pendingArchive is not null)">
+        @if (loadFailed)
+        {
+            <div class="load-error">
+                <p>Could not load tasks.</p>
+                <button type="button" @onclick="LoadAsync">Retry</button>
+            </div>
+        }
+        else
+        {
+            <div class="columns">
+                @foreach (var column in columns)
+                {
+                    <BoardColumn Status="@column.Status" Tasks="column.Tasks" Loading="loading">
+                        <Card Context="item">
+                            <TaskCard Item="item"
+                                      IsStaff="isStaff"
+                                      MenuOpen="openMenuTaskId == item.Id"
+                                      Saving="saving.Contains(item.Id)"
+                                      FocusRequested="focusTaskId == item.Id"
+                                      OnOpen="OpenMenu"
+                                      OnClose="CloseMenu"
+                                      OnSelect="SelectStatusAsync"
+                                      OnFocusHandled="FocusHandled" />
+                        </Card>
+                    </BoardColumn>
+                }
+            </div>
+        }
+    </div>
+    @if (pendingArchive is not null && module is not null)
+    {
+        <ArchiveDialog Title="@pendingArchive.Title"
+                       Module="module"
+                       OnCancel="CancelArchive"
+                       OnConfirm="ConfirmArchiveAsync" />
+    }
+</main>
+
+@code {
+    private IJSObjectReference? module;
+    private IJSObjectReference? keyGuard;
+    private List<TaskResponse> tasks = [];
+    private IReadOnlyList<(string Status, IReadOnlyList<TaskResponse> Tasks)> columns = BoardRules.Group([]);
+    private readonly HashSet<long> saving = [];
+    private bool ready;
+    private bool loading = true;
+    private bool loadFailed;
+    private bool isStaff;
+    private long? openMenuTaskId;
+    private long? focusTaskId;
+    private TaskResponse? pendingArchive;
+    private string announcement = "";
+    private string? errorMessage;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/TaskManager.Web/board.js");
+        keyGuard = await module.InvokeAsync<IJSObjectReference>("installKeyGuard");
+        if (!await Session.RestoreAsync())
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+        isStaff = Session.IsStaff;
+        ready = true;
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        loadFailed = false;
+        errorMessage = null;
+        StateHasChanged();
+        var loaded = await Api.GetTasksAsync();
+        if (loaded is null)
+        {
+            if (!Session.IsSignedIn)
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+            loadFailed = true;
+        }
+        else
+        {
+            tasks = loaded.ToList();
+            Regroup();
+        }
+        loading = false;
+    }
+
+    private void Regroup() => columns = BoardRules.Group(tasks);
+
+    private void OpenMenu(long id) => openMenuTaskId = id;
+
+    private void CloseMenu(long id)
+    {
+        if (openMenuTaskId == id)
+        {
+            openMenuTaskId = null;
+        }
+    }
+
+    private void FocusHandled(long id)
+    {
+        if (focusTaskId == id)
+        {
+            focusTaskId = null;
+        }
+    }
+
+    private async Task SelectStatusAsync((long Id, string Status) choice)
+    {
+        openMenuTaskId = null;
+        var task = tasks.FirstOrDefault(item => item.Id == choice.Id);
+        if (task is null || saving.Contains(task.Id))
+        {
+            return;
+        }
+        if (task.Condition == choice.Status)
+        {
+            focusTaskId = task.Id;
+            return;
+        }
+        if (choice.Status == TaskStatuses.Archived)
+        {
+            pendingArchive = task;
+            return;
+        }
+        await MoveAsync(task, choice.Status);
+    }
+
+    private void CancelArchive()
+    {
+        if (pendingArchive is null)
+        {
+            return;
+        }
+        focusTaskId = pendingArchive.Id;
+        pendingArchive = null;
+    }
+
+    private async Task ConfirmArchiveAsync()
+    {
+        var pending = pendingArchive;
+        pendingArchive = null;
+        if (pending is null)
+        {
+            return;
+        }
+        var task = tasks.FirstOrDefault(item => item.Id == pending.Id);
+        if (task is null || task.Condition == TaskStatuses.Archived || saving.Contains(task.Id))
+        {
+            focusTaskId = pending.Id;
+            return;
+        }
+        await MoveAsync(task, TaskStatuses.Archived);
+    }
+
+    private async Task MoveAsync(TaskResponse original, string status)
+    {
+        var index = tasks.FindIndex(item => item.Id == original.Id);
+        if (index < 0)
+        {
+            return;
+        }
+        var optimistic = original with { Condition = status };
+        tasks[index] = optimistic;
+        Regroup();
+        errorMessage = null;
+        focusTaskId = original.Id;
+        announcement = $"'{original.Title}' moved to {BoardStatus.Label(status)}.";
+        saving.Add(original.Id);
+        StateHasChanged();
+
+        var (result, saved) = await Api.SetConditionAsync(original.Id, status);
+
+        saving.Remove(original.Id);
+        if (result == SaveResult.Ok && saved is not null)
+        {
+            var current = tasks.FindIndex(item => item.Id == original.Id);
+            if (current >= 0 && tasks[current].Condition == status)
+            {
+                tasks[current] = saved;
+                Regroup();
+            }
+        }
+        else if (result != SaveResult.Ok)
+        {
+            var current = tasks.FindIndex(item => item.Id == original.Id);
+            if (current >= 0 && tasks[current].Condition == status)
+            {
+                tasks[current] = original;
+                Regroup();
+            }
+            announcement = "";
+            errorMessage = $"Could not change status of '{original.Title}'. Try again.";
+            focusTaskId = original.Id;
+        }
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (keyGuard is not null)
+            {
+                await keyGuard.InvokeVoidAsync("dispose");
+                await keyGuard.DisposeAsync();
+            }
+            if (module is not null)
+            {
+                await module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+}

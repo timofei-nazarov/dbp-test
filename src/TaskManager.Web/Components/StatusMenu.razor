@@ -1,0 +1,156 @@
+<div class="status-menu">
+    <button type="button"
+            class="status-button"
+            @ref="button"
+            aria-haspopup="listbox"
+            aria-expanded="@(IsOpen ? "true" : "false")"
+            aria-disabled="@(IsSaving ? "true" : null)"
+            aria-describedby="task-title-@TaskId"
+            @onclick="ToggleAsync"
+            @onkeydown="OnButtonKeyDown">Status: @BoardStatus.Label(Condition) ▾</button>
+    @if (IsOpen)
+    {
+        <ul class="status-list"
+            role="listbox"
+            tabindex="-1"
+            @ref="list"
+            aria-label="Change status"
+            aria-activedescendant="status-option-@TaskId-@TaskStatuses.All[activeIndex]"
+            @onkeydown="OnListKeyDown"
+            @onblur="CloseAsync">
+            @for (var index = 0; index < TaskStatuses.All.Count; index++)
+            {
+                var status = TaskStatuses.All[index];
+                var position = index;
+                <li id="status-option-@TaskId-@status"
+                    role="option"
+                    class="status-option @(position == activeIndex ? "active" : null)"
+                    aria-selected="@(status == Condition ? "true" : "false")"
+                    @onmousedown="() => ChooseAsync(status)"
+                    @onmousedown:preventDefault>@BoardStatus.Label(status)</li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    private ElementReference button;
+    private ElementReference list;
+    private int activeIndex;
+    private bool wasOpen;
+    private bool focusButton;
+
+    [Parameter, EditorRequired] public long TaskId { get; set; }
+    [Parameter, EditorRequired] public string Condition { get; set; } = "";
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public bool FocusRequested { get; set; }
+    [Parameter] public EventCallback<long> OnOpen { get; set; }
+    [Parameter] public EventCallback<long> OnClose { get; set; }
+    [Parameter] public EventCallback<(long Id, string Status)> OnSelect { get; set; }
+    [Parameter] public EventCallback<long> OnFocusHandled { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen && !wasOpen)
+        {
+            activeIndex = Math.Max(0, TaskStatuses.All.ToList().IndexOf(Condition));
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsOpen && !wasOpen)
+        {
+            wasOpen = true;
+            await list.FocusAsync();
+        }
+        else if (!IsOpen)
+        {
+            wasOpen = false;
+        }
+        if (FocusRequested || focusButton)
+        {
+            focusButton = false;
+            await button.FocusAsync();
+            if (FocusRequested)
+            {
+                await OnFocusHandled.InvokeAsync(TaskId);
+            }
+        }
+    }
+
+    private async Task ToggleAsync()
+    {
+        if (IsSaving)
+        {
+            return;
+        }
+        if (IsOpen)
+        {
+            await CloseAsync();
+            return;
+        }
+        await OnOpen.InvokeAsync(TaskId);
+    }
+
+    private async Task OnButtonKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "ArrowDown" && !IsOpen && !IsSaving)
+        {
+            await OnOpen.InvokeAsync(TaskId);
+        }
+    }
+
+    private async Task OnListKeyDown(KeyboardEventArgs args)
+    {
+        var last = TaskStatuses.All.Count - 1;
+        switch (args.Key)
+        {
+            case "ArrowDown":
+                activeIndex = Math.Min(last, activeIndex + 1);
+                break;
+            case "ArrowUp":
+                activeIndex = Math.Max(0, activeIndex - 1);
+                break;
+            case "Home":
+                activeIndex = 0;
+                break;
+            case "End":
+                activeIndex = last;
+                break;
+            case "Enter":
+            case " ":
+            case "Spacebar":
+                await ChooseAsync(TaskStatuses.All[activeIndex]);
+                break;
+            case "Escape":
+                focusButton = true;
+                await CloseAsync();
+                break;
+        }
+    }
+
+    private async Task ChooseAsync(string status)
+    {
+        if (!IsOpen)
+        {
+            return;
+        }
+        if (status == Condition)
+        {
+            focusButton = true;
+            await CloseAsync();
+            return;
+        }
+        await OnSelect.InvokeAsync((TaskId, status));
+    }
+
+    private async Task CloseAsync()
+    {
+        if (IsOpen)
+        {
+            await OnClose.InvokeAsync(TaskId);
+        }
+    }
+}

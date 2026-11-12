@@ -104,13 +104,29 @@ Request logs include method, path, status, authenticated user ID, and elapsed ti
 
 The only screens are the task board at `/board` (also `/`) and the sign-in page at `/login`; there are no other management screens. The board calls the API at the address in `Ui__ApiBaseUrl` (default `http://localhost:8080`, set in `docker-compose.yml`). New Relic is not enabled in the image.
 
+## Solution layout
+
+`TaskManager.slnx` holds five projects under `src/` and two under `tests/`.
+
+| Project | Contents |
+| --- | --- |
+| `src/TaskManager.Contracts` | Request and response contracts and the status constants |
+| `src/TaskManager.Domain` | Entities |
+| `src/TaskManager.Infrastructure` | EF Core context and migrations, file storage, email |
+| `src/TaskManager.Web` | Blazor task board and sign-in page (Razor class library) |
+| `src/TaskManager.Api` | Controllers, API services, and the application host |
+| `tests/TaskManager.Api.Tests` | API integration tests |
+| `tests/TaskManager.Web.Tests` | Task board and sign-in page tests |
+
+Project references: Web -> Contracts; Api -> Contracts, Domain, Infrastructure, Web; Infrastructure -> Domain; Api.Tests -> Api; Web.Tests -> Web. Domain and Contracts have no project references.
+
 ## Tests and development
 
 ```sh
 docker compose --profile test run --build --rm tests
 ```
 
-Tests use a real PostgreSQL service (`db-test`) and the separate persistent `csharp_test_postgres_data` volume. They apply migrations, create uniquely named fixtures, and never drop the database. Reports are written to `TestResults/backend.trx`. Tests cover authentication and token expiry, permissions, CRUD, validation, filters, nested records, deletion semantics, avatars, job processing and lease recovery, SMTP delivery, and API documentation. S3 and real Rollbar accounts are not contacted by the integration tests.
+Tests use a real PostgreSQL service (`db-test`) and the separate persistent `csharp_test_postgres_data` volume. They apply migrations, create uniquely named fixtures, and never drop the database. Reports are written to `TestResults/`, one `.trx` file per test project. Tests cover authentication and token expiry, permissions, CRUD, validation, filters, nested records, deletion semantics, avatars, job processing and lease recovery, SMTP delivery, and API documentation. S3 and real Rollbar accounts are not contacted by the integration tests.
 
 Build and verify formatting in the SDK container:
 
@@ -119,16 +135,16 @@ docker compose --profile test run --rm --no-deps tests dotnet build TaskManager.
 docker compose --profile test run --rm --no-deps tests dotnet format TaskManager.slnx --no-restore --verify-no-changes
 ```
 
-To format source files, bind the repository's `backend` directory into the SDK container:
+To format source files, bind the repository's `src` and `tests` directories into the SDK container:
 
 ```sh
-docker compose --profile test run --rm --no-deps -v "$PWD/backend:/workspace/backend" tests dotnet format TaskManager.slnx
+docker compose --profile test run --rm --no-deps -v "$PWD/src:/workspace/src" -v "$PWD/tests:/workspace/tests" tests dotnet format TaskManager.slnx
 ```
 
 To generate a migration after changing the model:
 
 ```sh
-docker compose --profile test run --rm --no-deps -v "$PWD/backend:/workspace/backend" tests sh -c 'dotnet tool restore && dotnet ef migrations add MigrationName --project backend/TaskManager.Api --output-dir Data/Migrations'
+docker compose --profile test run --rm --no-deps -v "$PWD/src:/workspace/src" tests sh -c 'dotnet tool restore && dotnet ef migrations add MigrationName --project src/TaskManager.Infrastructure --startup-project src/TaskManager.Api --output-dir Data/Migrations'
 ```
 
 Remove generated comments/docstrings before committing migrations, following repository rules. Apply migrations with `docker compose run --rm migrate`. Restart API and worker on the rebuilt image after model changes.
