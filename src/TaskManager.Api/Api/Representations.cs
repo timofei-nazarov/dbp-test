@@ -14,7 +14,7 @@ public sealed class Representations(FileStorage storage, IHttpContextAccessor ac
 
     public TaskResponse Task(WorkTask task) => new(task.Id, task.Title, task.Description, task.DateCreated, task.DateUpdated,
         task.DateToFinish, task.Condition, task.Priority, task.Author is null ? null : User(task.Author),
-        task.Executor is null ? null : User(task.Executor), task.Tags.OrderBy(x => x.Id).Select(Tag), TaskStatuses.IsOverdue(task.DateToFinish, task.Condition, DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime)));
+        task.Executor is null ? null : User(task.Executor), task.Tags.OrderBy(x => x.Id).Select(Tag), TaskRules.IsOverdue(task.DateToFinish, task.Condition, DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime)));
 
     public static object Job(BackgroundJob job)
     {
