@@ -178,6 +178,10 @@ body {
     color: var(--color-accent);
 }
 
+.logo-mark path {
+    stroke: var(--color-on-accent);
+}
+
 .columns {
     display: grid;
     grid-template-columns: repeat(7, minmax(var(--size-column-min), 1fr));
