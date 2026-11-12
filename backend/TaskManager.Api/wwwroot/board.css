@@ -427,6 +427,10 @@ button.danger {
     color: var(--color-danger-text);
 }
 
+.banner-icon path {
+    stroke: var(--color-on-accent);
+}
+
 .banner-icon {
     flex: none;
     width: var(--size-banner-icon);

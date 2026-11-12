@@ -6,6 +6,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using TaskManager.Api.Api;
 using TaskManager.Api.Ui.Components;
+using TaskManager.Api.Ui.Layout;
+using TaskManager.Api.Ui.Pages;
 using Xunit;
 
 namespace TaskManager.Tests;
@@ -66,6 +68,15 @@ public sealed class ShellUiTests
 
         Assert.DoesNotContain("aria-live", html);
         Assert.DoesNotContain("role=\"status\"", html);
+    }
+
+    [Fact]
+    public void LoginPageUsesLoginLayoutAndBoardUsesDefault()
+    {
+        var login = typeof(Login).GetCustomAttributes(typeof(LayoutAttribute), true).Cast<LayoutAttribute>().Single();
+
+        Assert.Equal(typeof(LoginLayout), login.LayoutType);
+        Assert.Empty(typeof(Board).GetCustomAttributes(typeof(LayoutAttribute), true));
     }
 
     [Fact]
