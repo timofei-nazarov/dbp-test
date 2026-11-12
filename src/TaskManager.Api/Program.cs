@@ -25,7 +25,7 @@ builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(builder
     }.ConnectionString));
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<TokenService>();
-builder.Services.AddSingleton<FileStorage>();
+builder.Services.AddSingleton(provider => new FileStorage(provider.GetRequiredService<IConfiguration>(), provider.GetRequiredService<IWebHostEnvironment>().ContentRootPath));
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<EntityWriter>();
 builder.Services.AddScoped<DemoSeeder>();
