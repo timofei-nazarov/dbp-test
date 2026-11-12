@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS sdk
+FROM mcr.microsoft.com/dotnet/sdk:10.0.404 AS sdk
 WORKDIR /workspace
 COPY global.json Directory.Build.props TaskManager.slnx ./
 COPY .config .config
@@ -23,7 +23,7 @@ COPY tests tests
 FROM sdk AS publish
 RUN dotnet publish src/TaskManager.Api/TaskManager.Api.csproj -c Release --no-restore -o /out
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.15 AS runtime
 WORKDIR /app
 COPY --from=publish /out .
 RUN mkdir /app/media && chown -R app:app /app/media

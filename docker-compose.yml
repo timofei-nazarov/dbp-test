@@ -60,7 +60,7 @@ services:
         condition: service_healthy
 
   db-csharp:
-    image: postgres:15-alpine
+    image: postgres:16.2-alpine
     environment:
       POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
       POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
@@ -91,7 +91,7 @@ services:
 
   db-test:
     profiles: ["test"]
-    image: postgres:15-alpine
+    image: postgres:16.2-alpine
     environment:
       POSTGRES_DB: ${TEST_POSTGRES_DB:?Set TEST_POSTGRES_DB in .env}
       POSTGRES_USER: ${TEST_POSTGRES_USER:?Set TEST_POSTGRES_USER in .env}
