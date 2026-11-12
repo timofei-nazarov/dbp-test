@@ -82,7 +82,7 @@ services:
       Database__Name: ${TEST_POSTGRES_DB:?Set TEST_POSTGRES_DB in .env}
       Database__Username: ${TEST_POSTGRES_USER:?Set TEST_POSTGRES_USER in .env}
       Database__Password: ${TEST_POSTGRES_PASSWORD:?Set TEST_POSTGRES_PASSWORD in .env}
-    command: ["dotnet", "test", "backend/TaskManager.Tests/TaskManager.Tests.csproj", "--no-restore", "--logger", "trx;LogFileName=backend.trx", "--results-directory", "/workspace/TestResults"]
+    command: ["dotnet", "test", "TaskManager.slnx", "--no-restore", "--logger", "trx", "--results-directory", "/workspace/TestResults"]
     volumes:
       - ./TestResults:/workspace/TestResults
     depends_on:
