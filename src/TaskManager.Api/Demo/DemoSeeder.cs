@@ -4,7 +4,7 @@ using TaskManager.Contracts;
 using TaskManager.Domain;
 using TaskManager.Infrastructure.Data;
 
-namespace TaskManager.Api.Services;
+namespace TaskManager.Api.Demo;
 
 public sealed class DemoSeeder(AppDbContext db, IConfiguration configuration, IPasswordHasher<User> hasher, ILogger<DemoSeeder> logger)
 {

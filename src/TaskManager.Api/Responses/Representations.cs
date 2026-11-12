@@ -1,9 +1,8 @@
-using TaskManager.Api.Services;
 using TaskManager.Contracts;
 using TaskManager.Domain;
 using TaskManager.Infrastructure.Services;
 
-namespace TaskManager.Api.Api;
+namespace TaskManager.Api.Responses;
 
 public sealed class Representations(FileStorage storage, IHttpContextAccessor accessor, TimeProvider clock)
 {

@@ -8,7 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using MimeKit;
-using TaskManager.Api.Services;
+using TaskManager.Api.Jobs;
 using TaskManager.Domain;
 using TaskManager.Infrastructure.Data;
 using TaskManager.Infrastructure.Services;

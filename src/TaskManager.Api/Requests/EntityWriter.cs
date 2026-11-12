@@ -2,13 +2,13 @@ using System.Net.Mail;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
-using TaskManager.Api.Api;
+using TaskManager.Api.Errors;
 using TaskManager.Contracts;
 using TaskManager.Domain;
 using TaskManager.Infrastructure.Data;
 using TaskManager.Infrastructure.Services;
 
-namespace TaskManager.Api.Services;
+namespace TaskManager.Api.Requests;
 
 public sealed class EntityWriter(AppDbContext db, FileStorage storage)
 {

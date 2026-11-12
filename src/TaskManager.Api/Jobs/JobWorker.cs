@@ -4,7 +4,7 @@ using TaskManager.Domain;
 using TaskManager.Infrastructure.Data;
 using TaskManager.Infrastructure.Services;
 
-namespace TaskManager.Api.Services;
+namespace TaskManager.Api.Jobs;
 
 public sealed record CountdownPayload(int Seconds);
 public sealed record AssignmentPayload(long TaskId);

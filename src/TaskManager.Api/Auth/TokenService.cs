@@ -2,10 +2,10 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
-using TaskManager.Api.Api;
+using TaskManager.Api.Errors;
 using TaskManager.Domain;
 
-namespace TaskManager.Api.Services;
+namespace TaskManager.Api.Auth;
 
 public sealed class TokenService(IConfiguration configuration, TimeProvider clock)
 {

@@ -2,8 +2,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using TaskManager.Api.Api;
-using TaskManager.Api.Services;
+using TaskManager.Api.Auth;
+using TaskManager.Api.Errors;
+using TaskManager.Api.Requests;
 using TaskManager.Domain;
 using TaskManager.Infrastructure.Data;
 

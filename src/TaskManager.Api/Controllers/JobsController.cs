@@ -2,8 +2,10 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using TaskManager.Api.Api;
-using TaskManager.Api.Services;
+using TaskManager.Api.Errors;
+using TaskManager.Api.Jobs;
+using TaskManager.Api.Requests;
+using TaskManager.Api.Responses;
 using TaskManager.Domain;
 using TaskManager.Infrastructure.Data;
 
