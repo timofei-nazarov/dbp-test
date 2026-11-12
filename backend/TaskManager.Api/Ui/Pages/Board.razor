@@ -7,12 +7,14 @@
 @inject IJSRuntime JS
 
 <main class="page">
-    <h1>Task board</h1>
+    <header class="page-header">
+        <h1>Board</h1>
+        @if (ready)
+        {
+            <p class="page-summary">@BoardRules.Summary(loading || loadFailed ? null : tasks, today, isStaff)</p>
+        }
+    </header>
     <p class="hint">Tab moves between cards. Enter or Space opens the status list. Arrow keys choose, Enter confirms, Esc cancels.</p>
-    @if (ready && !isStaff)
-    {
-        <p class="note">You can view the board but not change task status.</p>
-    }
     <div role="status" aria-live="polite" class="live">
         @if (errorMessage is not null)
         {
