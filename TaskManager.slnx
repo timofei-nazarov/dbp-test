@@ -1,6 +1,13 @@
 <Solution>
-  <Folder Name="/backend/">
-    <Project Path="backend/TaskManager.Api/TaskManager.Api.csproj" />
-    <Project Path="backend/TaskManager.Tests/TaskManager.Tests.csproj" />
+  <Folder Name="/src/">
+    <Project Path="src/TaskManager.Api/TaskManager.Api.csproj" />
+    <Project Path="src/TaskManager.Contracts/TaskManager.Contracts.csproj" />
+    <Project Path="src/TaskManager.Domain/TaskManager.Domain.csproj" />
+    <Project Path="src/TaskManager.Infrastructure/TaskManager.Infrastructure.csproj" />
+    <Project Path="src/TaskManager.Web/TaskManager.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TaskManager.Api.Tests/TaskManager.Api.Tests.csproj" />
+    <Project Path="tests/TaskManager.Web.Tests/TaskManager.Web.Tests.csproj" />
   </Folder>
 </Solution>
