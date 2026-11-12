@@ -6,12 +6,12 @@ The demo dataset supports manual API checks: three accounts with different write
 
 | Area | Entry point |
 | --- | --- |
-| Dataset, validation, and repeat-run behavior | [DemoSeeder.cs](../backend/TaskManager.Api/Services/DemoSeeder.cs) |
+| Dataset, validation, and repeat-run behavior | [DemoSeeder.cs](../src/TaskManager.Api/Services/DemoSeeder.cs) |
 | Environment wiring and service dependencies | [docker-compose.yml](../docker-compose.yml) |
-| Routes and request handling | [Controllers](../backend/TaskManager.Api/Controllers) |
-| Report generation and job processing | [JobWorker.cs](../backend/TaskManager.Api/Services/JobWorker.cs), [FileStorage.cs](../backend/TaskManager.Api/Services/FileStorage.cs) |
-| Expected behavior and test examples | [DemoSeedTests.cs](../backend/TaskManager.Tests/DemoSeedTests.cs), [BackendTests.cs](../backend/TaskManager.Tests/BackendTests.cs) |
-| Error responses | [Program.cs](../backend/TaskManager.Api/Program.cs), [ApiException.cs](../backend/TaskManager.Api/Api/ApiException.cs), [StaffWriteFilter.cs](../backend/TaskManager.Api/Api/StaffWriteFilter.cs), [RequestData.cs](../backend/TaskManager.Api/Api/RequestData.cs) |
+| Routes and request handling | [Controllers](../src/TaskManager.Api/Controllers) |
+| Report generation and job processing | [JobWorker.cs](../src/TaskManager.Api/Services/JobWorker.cs), [FileStorage.cs](../src/TaskManager.Infrastructure/Services/FileStorage.cs) |
+| Expected behavior and test examples | [DemoSeedTests.cs](../tests/TaskManager.Api.Tests/DemoSeedTests.cs), [BackendTests.cs](../tests/TaskManager.Api.Tests/BackendTests.cs) |
+| Error responses | [Program.cs](../src/TaskManager.Api/Program.cs), [ApiException.cs](../src/TaskManager.Api/Api/ApiException.cs), [StaffWriteFilter.cs](../src/TaskManager.Api/Api/StaffWriteFilter.cs), [RequestData.cs](../src/TaskManager.Api/Api/RequestData.cs) |
 
 Use Swagger or curl to check login, staff/non-staff permissions, CRUD, combined task filters, and nested routes. Enqueue a countdown through the API to verify the running worker and download its generated file; seeding does not enqueue jobs. Request schemas and API behavior are described in Swagger and the root README.
 
