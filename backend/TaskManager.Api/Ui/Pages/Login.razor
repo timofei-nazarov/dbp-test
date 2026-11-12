@@ -1,40 +1,31 @@
 @page "/login"
+@layout LoginLayout
 @inject UserSession Session
 @inject NavigationManager Navigation
 
-<main class="page login">
-    <h1>Sign in</h1>
-    <form @onsubmit="SignInAsync">
-        <div class="field">
-            <label for="login-username">Username</label>
-            <input id="login-username" @ref="usernameInput" @bind="username" @bind:event="oninput" autocomplete="username" required />
-        </div>
-        <div class="field">
-            <label for="login-password">Password</label>
-            <input id="login-password" type="password" @bind="password" @bind:event="oninput" autocomplete="current-password" required />
-        </div>
-        <button type="submit" aria-disabled="@(busy ? "true" : null)">Sign in</button>
-    </form>
-    <div role="status" aria-live="polite">
-        @if (failed)
-        {
-            <p class="error">Sign-in failed. Check the username and password.</p>
-        }
-    </div>
+<main class="auth-page">
+    <LoginForm @ref="form"
+               @bind-Username="username"
+               @bind-Password="password"
+               @bind-PasswordVisible="passwordVisible"
+               Busy="busy"
+               Failed="failed"
+               OnSubmit="SignInAsync" />
 </main>
 
 @code {
-    private ElementReference usernameInput;
+    private LoginForm? form;
     private string username = "";
     private string password = "";
+    private bool passwordVisible;
     private bool busy;
     private bool failed;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && form is not null)
         {
-            await usernameInput.FocusAsync();
+            await form.FocusUsernameAsync();
         }
     }
 

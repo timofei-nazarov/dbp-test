@@ -1,0 +1,28 @@
+<header class="topbar">
+    <div class="topbar-brand">
+        <LogoMark />
+        <span class="topbar-title">Task board</span>
+    </div>
+    @if (SignedIn)
+    {
+        <div class="topbar-user">
+            @if (Profile is not null)
+            {
+                <span class="avatar" aria-hidden="true">@BoardRules.Initials(Profile.FirstName, Profile.LastName, Profile.Username)</span>
+                <span class="topbar-username">@Profile.Username</span>
+            }
+            <button type="button" class="button-secondary" @onclick="OnSignOut">Sign out</button>
+        </div>
+    }
+</header>
+
+@code {
+    [Parameter]
+    public bool SignedIn { get; set; }
+
+    [Parameter]
+    public UserResponse? Profile { get; set; }
+
+    [Parameter]
+    public EventCallback OnSignOut { get; set; }
+}

@@ -29,6 +29,16 @@ public sealed class TaskApiClient(IHttpClientFactory factory, UserSession sessio
         return await response.Content.ReadFromJsonAsync<List<TaskResponse>>(Json);
     }
 
+    public async Task<UserResponse?> GetCurrentUserAsync()
+    {
+        using var response = await SendAsync(() => new HttpRequestMessage(HttpMethod.Get, "api/current-user/"));
+        if (response is null || !response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+        return await response.Content.ReadFromJsonAsync<UserResponse>(Json);
+    }
+
     public async Task<SaveResult> SetConditionAsync(long id, string condition)
     {
         using var response = await SendAsync(() => new HttpRequestMessage(HttpMethod.Patch, $"api/tasks/{id}/")

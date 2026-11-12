@@ -85,4 +85,75 @@ public sealed class BoardRulesTests
         Assert.Equal("2026-01-05", BoardRules.DueText(new DateOnly(2026, 1, 5)));
         Assert.Null(BoardRules.DueText(null));
     }
+
+    [Fact]
+    public void InitialsUseFirstLettersOfFirstAndLastName()
+    {
+        Assert.Equal("AS", BoardRules.Initials("Anna", "Smith", "anna"));
+        Assert.Equal("AS", BoardRules.Initials("anna", "smith", "x"));
+    }
+
+    [Fact]
+    public void InitialsUseSingleNameWhenOnlyOneExists()
+    {
+        Assert.Equal("A", BoardRules.Initials("Anna", "", "anna"));
+        Assert.Equal("S", BoardRules.Initials("", "Smith", "anna"));
+        Assert.Equal("S", BoardRules.Initials("  ", "Smith", "anna"));
+    }
+
+    [Fact]
+    public void InitialsFallBackToUsernameWhenBothNamesEmpty()
+    {
+        Assert.Equal("A", BoardRules.Initials("", "", "anna"));
+        Assert.Equal("A", BoardRules.Initials(null, null, "anna"));
+        Assert.Equal("?", BoardRules.Initials(" ", null, ""));
+    }
+
+    private static List<TaskResponse> SixTasksWithFourOverdue() =>
+    [
+        Task(1, "new_task", due: Today.AddDays(-1)),
+        Task(2, "in_qa", due: Today.AddDays(-5)),
+        Task(3, "ready_for_release", due: Today.AddDays(-2)),
+        Task(4, "in_development", due: Today.AddDays(-9)),
+        Task(5, "released", due: Today.AddDays(-9)),
+        Task(6, "in_qa", due: Today.AddDays(1))
+    ];
+
+    [Fact]
+    public void SummaryTextForStaffAndReader()
+    {
+        var tasks = SixTasksWithFourOverdue();
+
+        Assert.Equal("6 tasks · 4 overdue · You can change status", BoardRules.Summary(tasks, Today, true));
+        Assert.Equal("6 tasks · 4 overdue · View only", BoardRules.Summary(tasks, Today, false));
+    }
+
+    [Fact]
+    public void SummaryTextUsesSingularAndZero()
+    {
+        Assert.Equal("1 task · 0 overdue · View only", BoardRules.Summary([Task(1, "new_task")], Today, false));
+        Assert.Equal("0 tasks · 0 overdue · You can change status", BoardRules.Summary([], Today, true));
+    }
+
+    [Fact]
+    public void SummaryTextWithoutTasksShowsOnlyAccess()
+    {
+        Assert.Equal("You can change status", BoardRules.Summary(null, Today, true));
+        Assert.Equal("View only", BoardRules.Summary(null, Today, false));
+    }
+
+    [Fact]
+    public void CountOverdueIgnoresReleasedArchivedAndMissingDates()
+    {
+        List<TaskResponse> tasks =
+        [
+            Task(1, "new_task", due: Today.AddDays(-1)),
+            Task(2, "released", due: Today.AddDays(-1)),
+            Task(3, "archived", due: Today.AddDays(-1)),
+            Task(4, "in_qa"),
+            Task(5, "in_qa", due: Today)
+        ];
+
+        Assert.Equal(1, BoardRules.CountOverdue(tasks, Today));
+    }
 }

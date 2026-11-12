@@ -27,4 +27,35 @@ public static class BoardRules
     }
 
     public static string? DueText(DateOnly? due) => due?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    public static string Initials(string? firstName, string? lastName, string? username)
+    {
+        var names = new[] { firstName, lastName }.Select(FirstElement).Where(element => element.Length > 0).ToList();
+        if (names.Count > 0)
+        {
+            return string.Concat(names).ToUpperInvariant();
+        }
+        var fallback = FirstElement(username);
+        return fallback.Length > 0 ? fallback.ToUpperInvariant() : "?";
+    }
+
+    public static int CountOverdue(IEnumerable<TaskResponse> tasks, DateOnly today) =>
+        tasks.Count(task => IsOverdue(task.DateToFinish, task.Condition, today));
+
+    public static string Summary(IReadOnlyCollection<TaskResponse>? tasks, DateOnly today, bool isStaff)
+    {
+        var access = isStaff ? "You can change status" : "View only";
+        if (tasks is null)
+        {
+            return access;
+        }
+        var total = tasks.Count;
+        return $"{total} {(total == 1 ? "task" : "tasks")} · {CountOverdue(tasks, today)} overdue · {access}";
+    }
+
+    private static string FirstElement(string? text)
+    {
+        var trimmed = text?.Trim();
+        return string.IsNullOrEmpty(trimmed) ? "" : StringInfo.GetNextTextElement(trimmed);
+    }
 }

@@ -24,12 +24,13 @@ public sealed class UserSession(IHttpClientFactory factory, ProtectedSessionStor
 
     public async Task<bool> RestoreAsync()
     {
-        if (IsSignedIn)
-        {
-            return true;
-        }
+        await gate.WaitAsync();
         try
         {
+            if (IsSignedIn)
+            {
+                return true;
+            }
             var stored = await storage.GetAsync<string>(RefreshKey);
             if (!stored.Success || string.IsNullOrEmpty(stored.Value))
             {
@@ -42,6 +43,27 @@ public sealed class UserSession(IHttpClientFactory factory, ProtectedSessionStor
         {
             Clear();
             return false;
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    public async Task SignOutAsync()
+    {
+        await gate.WaitAsync();
+        try
+        {
+            Clear();
+            await storage.DeleteAsync(RefreshKey);
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or JSException or System.Security.Cryptography.CryptographicException)
+        {
+        }
+        finally
+        {
+            gate.Release();
         }
     }
 

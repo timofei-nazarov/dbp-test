@@ -46,6 +46,18 @@ public sealed class BoardApiTests(ApiFixture fixture)
     }
 
     [Fact]
+    public async Task StaffAndReaderCanReadCurrentUserNames()
+    {
+        foreach (var (client, username) in new[] { (fixture.Staff, $"staff-{fixture.Prefix}"), (fixture.Reader, $"reader-{fixture.Prefix}") })
+        {
+            var current = await ObjectAsync(await client.GetAsync("/api/current-user/"));
+            Assert.Equal(username, current["username"]!.GetValue<string>());
+            Assert.Equal(System.Text.Json.JsonValueKind.String, current["first_name"]!.GetValueKind());
+            Assert.Equal(System.Text.Json.JsonValueKind.String, current["last_name"]!.GetValueKind());
+        }
+    }
+
+    [Fact]
     public async Task PatchWithUnknownConditionReturnsFieldError()
     {
         var task = await ObjectAsync(await fixture.Staff.PostAsJsonAsync("/api/tasks/", new { title = fixture.Unique("board-task") }), HttpStatusCode.Created);

@@ -1,0 +1,73 @@
+<section class="auth-card" aria-labelledby="login-title">
+    <div class="auth-head">
+        <LogoMark />
+        <h1 id="login-title">Sign in</h1>
+        <p class="auth-subtitle">to continue to Task board</p>
+    </div>
+    <div role="status" aria-live="polite" class="auth-status">
+        @if (Failed)
+        {
+            <div class="banner banner-error">
+                <svg class="banner-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                    <circle cx="8" cy="8" r="8" fill="currentColor" />
+                    <path d="M8 4.5v4M8 11.2v.1" fill="none" stroke-width="1.8" stroke-linecap="round" />
+                </svg>
+                <span>Incorrect username or password.</span>
+            </div>
+        }
+    </div>
+    <form @onsubmit="OnSubmit">
+        <div class="field">
+            <label for="login-username">Username</label>
+            <input id="login-username" @ref="usernameInput" value="@Username" @oninput="ChangeUsernameAsync" autocomplete="username" required />
+        </div>
+        <div class="field">
+            <label for="login-password">Password</label>
+            <div class="input-action">
+                <input id="login-password" type="@(PasswordVisible ? "text" : "password")" aria-invalid="@(Failed ? "true" : null)" value="@Password" @oninput="ChangePasswordAsync" autocomplete="current-password" required />
+                <button type="button" class="input-toggle" aria-pressed="@(PasswordVisible ? "true" : "false")" aria-controls="login-password" @onclick="ToggleAsync">@(PasswordVisible ? "Hide" : "Show")</button>
+            </div>
+        </div>
+        <button type="submit" class="button-primary button-block" aria-disabled="@(Busy ? "true" : null)">Sign in</button>
+    </form>
+    <p class="auth-help">Trouble signing in? Contact your administrator.</p>
+</section>
+
+@code {
+    private ElementReference usernameInput;
+
+    [Parameter]
+    public string Username { get; set; } = "";
+
+    [Parameter]
+    public EventCallback<string> UsernameChanged { get; set; }
+
+    [Parameter]
+    public string Password { get; set; } = "";
+
+    [Parameter]
+    public EventCallback<string> PasswordChanged { get; set; }
+
+    [Parameter]
+    public bool PasswordVisible { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> PasswordVisibleChanged { get; set; }
+
+    [Parameter]
+    public bool Busy { get; set; }
+
+    [Parameter]
+    public bool Failed { get; set; }
+
+    [Parameter]
+    public EventCallback OnSubmit { get; set; }
+
+    public ValueTask FocusUsernameAsync() => usernameInput.FocusAsync();
+
+    private Task ChangeUsernameAsync(ChangeEventArgs args) => UsernameChanged.InvokeAsync(args.Value?.ToString() ?? "");
+
+    private Task ChangePasswordAsync(ChangeEventArgs args) => PasswordChanged.InvokeAsync(args.Value?.ToString() ?? "");
+
+    private Task ToggleAsync() => PasswordVisibleChanged.InvokeAsync(!PasswordVisible);
+}

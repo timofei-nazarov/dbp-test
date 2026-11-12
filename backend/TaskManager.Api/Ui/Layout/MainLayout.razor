@@ -1,0 +1,34 @@
+@inherits LayoutComponentBase
+@inject UserSession Session
+@inject TaskApiClient Api
+@inject NavigationManager Navigation
+
+<TopBar SignedIn="signedIn" Profile="profile" OnSignOut="SignOutAsync" />
+@Body
+
+@code {
+    private bool signedIn;
+    private UserResponse? profile;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+        signedIn = await Session.RestoreAsync();
+        if (signedIn)
+        {
+            profile = await Api.GetCurrentUserAsync();
+        }
+        StateHasChanged();
+    }
+
+    private async Task SignOutAsync()
+    {
+        await Session.SignOutAsync();
+        signedIn = false;
+        profile = null;
+        Navigation.NavigateTo("/login");
+    }
+}
