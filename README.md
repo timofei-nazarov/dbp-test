@@ -72,7 +72,7 @@ All main data routes require authentication. Authenticated users can read all re
 
 Creating a task with nested `author`, `executor`, or `tag` data creates new records. Nested relationship updates are unsupported and return a server error. Scalar task updates are supported. Deleting a user sets task author/executor references to null. Deleting a tag through a task route deletes the tag globally, including links to other tasks.
 
-The seven status strings are `new_task`, `in_development`, `in_qa`, `in_code_review`, `ready_for_release`, `released`, and `archived`. Transitions are unrestricted. Dates are UTC calendar dates. Creation/update dates are managed by the backend and cannot be set through API input. Task responses contain `is_overdue`, which is true when `date_to_finish` is before today (UTC) and the status is not `released` or `archived`.
+The seven status strings are `new_task`, `in_development`, `in_qa`, `in_code_review`, `ready_for_release`, `released`, and `archived`. Transitions are unrestricted. Dates are UTC calendar dates. Creation/update dates are managed by the backend and cannot be set through API input. Task responses contain `is_overdue`, which is true when `date_to_finish` is before today (UTC) and the status is not `released` or `archived`. Task responses also contain `overdue_days`, the whole number of days from `date_to_finish` to today (UTC) when the task is overdue and `null` otherwise. It is read-only and ignored in request bodies, and `is_overdue` is true exactly when `overdue_days` is not null.
 
 Task assignment does not automatically send email.
 
