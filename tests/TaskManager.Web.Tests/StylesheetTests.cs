@@ -167,7 +167,7 @@ public sealed class StylesheetTests
 
         Assert.Contains("outline: 2px solid var(--color-accent);", rule);
         Assert.Contains("outline-offset: 2px;", rule);
-        Assert.DoesNotContain("dashed", Css);
+        Assert.DoesNotContain("dashed", rule);
         Assert.DoesNotContain("outline: none", Css);
         Assert.DoesNotContain("outline-color", Css);
     }
@@ -192,6 +192,15 @@ public sealed class StylesheetTests
     public void Stylesheet_HasReducedMotionBlock()
     {
         Assert.Contains("@media (prefers-reduced-motion: reduce)", Css);
+    }
+
+    [Fact]
+    public void Stylesheet_ReducedMotionDisablesSkeletonAndSheetAnimation()
+    {
+        var start = Css.IndexOf("@media (prefers-reduced-motion: reduce)", StringComparison.Ordinal);
+        var block = Css[start..];
+
+        Assert.Matches(@"\.skeleton,\s*\.sheet\s*\{\s*animation:\s*none;", block);
     }
 
     [Fact]

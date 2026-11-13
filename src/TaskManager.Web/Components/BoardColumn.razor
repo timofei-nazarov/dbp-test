@@ -1,27 +1,61 @@
-<section aria-labelledby="column-title-@Status" class="column">
-    <h2 id="column-title-@Status">@BoardStatus.Label(Status) <span class="count">(@(Loading ? "…" : Tasks.Count))</span></h2>
-    @if (Loading)
-    {
-        <p class="column-note">Loading...</p>
-    }
-    else if (Tasks.Count == 0)
-    {
-        <p class="column-note empty">No tasks in this status</p>
-    }
-    else
-    {
-        <ul class="cards">
-            @foreach (var item in Tasks)
+@if (Mobile)
+{
+    <section aria-labelledby="column-title-@Status" class="group">
+        <div class="group-head">
+            <h2 id="column-title-@Status"><span class="status-dot status-dot-@BoardStatus.Token(Status)" aria-hidden="true"></span> @BoardStatus.Label(Status)</h2>
+            @if (!Loading)
             {
-                <li @key="item.Id">@Card(item)</li>
+                <span class="group-count">@Tasks.Count</span>
             }
-        </ul>
-    }
-</section>
+        </div>
+        @Body()
+    </section>
+}
+else
+{
+    <section aria-labelledby="column-title-@Status" class="column">
+        <div class="column-head">
+            <h2 id="column-title-@Status"><span class="status-dot status-dot-@BoardStatus.Token(Status)" aria-hidden="true"></span> @BoardStatus.Label(Status)</h2>
+            @if (!Loading)
+            {
+                <span class="count-pill">
+                    <span aria-hidden="true">@Tasks.Count</span>
+                    <span class="visually-hidden">@BoardRules.CountText(Tasks.Count)</span>
+                </span>
+            }
+        </div>
+        @Body()
+    </section>
+}
 
 @code {
+    private RenderFragment Body() => __builder =>
+    {
+        if (Loading)
+        {
+            for (var index = 0; index < 2; index++)
+            {
+                <div class="skeleton" aria-hidden="true"><span></span><span></span></div>
+            }
+        }
+        else if (Tasks.Count == 0)
+        {
+            <p class="column-note">No tasks</p>
+        }
+        else
+        {
+            <ul class="cards">
+                @foreach (var item in Tasks)
+                {
+                    <li @key="item.Id">@Card(item)</li>
+                }
+            </ul>
+        }
+    };
+
     [Parameter, EditorRequired] public string Status { get; set; } = "";
     [Parameter] public IReadOnlyList<TaskResponse> Tasks { get; set; } = [];
     [Parameter] public bool Loading { get; set; }
+    [Parameter] public bool Mobile { get; set; }
     [Parameter, EditorRequired] public RenderFragment<TaskResponse> Card { get; set; } = default!;
 }

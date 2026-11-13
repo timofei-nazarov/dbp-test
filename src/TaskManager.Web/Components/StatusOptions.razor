@@ -1,0 +1,101 @@
+<ul class="status-options"
+    role="listbox"
+    tabindex="@(Tabbable ? "0" : "-1")"
+    @ref="list"
+    aria-label="Change status"
+    aria-activedescendant="status-option-@TaskId-@TaskStatuses.All[activeIndex]"
+    @onkeydown="OnKeyDown"
+    @onkeydown:stopPropagation
+    @onblur="OnBlurAsync">
+    @for (var index = 0; index < TaskStatuses.All.Count; index++)
+    {
+        var status = TaskStatuses.All[index];
+        var position = index;
+        var isCurrent = status == Condition;
+        var isArchiveAction = status == TaskStatuses.Archived && !isCurrent;
+        @if (status == TaskStatuses.Archived)
+        {
+            <li role="presentation" aria-hidden="true" class="status-divider"></li>
+        }
+        <li id="status-option-@TaskId-@status"
+            role="option"
+            class="status-option @(position == activeIndex ? "active" : null) @(isArchiveAction ? "danger-option" : null)"
+            aria-selected="@(isCurrent ? "true" : "false")"
+            @onmousedown="() => OnChoose.InvokeAsync(status)"
+            @onmousedown:preventDefault
+            @onmouseover="() => Hover(position)">
+            @if (isArchiveAction)
+            {
+                <Icon Name="trash" />
+                <span class="status-option-label">Archive…</span>
+            }
+            else
+            {
+                <span class="status-dot status-dot-@BoardStatus.Token(status)" aria-hidden="true"></span>
+                <span class="status-option-label">@BoardStatus.Label(status)</span>
+            }
+            @if (isCurrent)
+            {
+                <Icon Name="check" />
+            }
+        </li>
+    }
+</ul>
+
+@code {
+    private ElementReference list;
+    private int activeIndex;
+
+    [Parameter, EditorRequired] public long TaskId { get; set; }
+    [Parameter, EditorRequired] public string Condition { get; set; } = "";
+    [Parameter] public bool Tabbable { get; set; }
+    [Parameter] public bool CloseOnBlur { get; set; }
+    [Parameter] public EventCallback<string> OnChoose { get; set; }
+    [Parameter] public EventCallback OnEscape { get; set; }
+    [Parameter] public EventCallback OnBlur { get; set; }
+
+    public ValueTask FocusAsync(bool preventScroll) => list.FocusAsync(preventScroll);
+
+    protected override void OnInitialized()
+    {
+        activeIndex = Math.Max(0, TaskStatuses.All.ToList().IndexOf(Condition));
+    }
+
+    private void Hover(int position) => activeIndex = position;
+
+    private async Task OnBlurAsync()
+    {
+        if (CloseOnBlur)
+        {
+            await OnBlur.InvokeAsync();
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs args)
+    {
+        var last = TaskStatuses.All.Count - 1;
+        switch (args.Key)
+        {
+            case "ArrowDown":
+                activeIndex = Math.Min(last, activeIndex + 1);
+                break;
+            case "ArrowUp":
+                activeIndex = Math.Max(0, activeIndex - 1);
+                break;
+            case "Home":
+                activeIndex = 0;
+                break;
+            case "End":
+                activeIndex = last;
+                break;
+            case "Enter":
+            case " ":
+            case "Spacebar":
+                await OnChoose.InvokeAsync(TaskStatuses.All[activeIndex]);
+                break;
+            case "Escape":
+                await OnEscape.InvokeAsync();
+                break;
+        }
+    }
+}

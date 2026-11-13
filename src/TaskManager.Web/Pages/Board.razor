@@ -5,6 +5,7 @@
 @inject TaskApiClient Api
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
+@inject TimeProvider Clock
 
 <main class="page">
     <header class="page-header">
@@ -39,6 +40,8 @@
                         <Card Context="item">
                             <TaskCard Item="item"
                                       IsStaff="isStaff"
+                                      Today="DateOnly.FromDateTime(Clock.GetUtcNow().UtcDateTime)"
+                                      Module="module"
                                       MenuOpen="openMenuTaskId == item.Id"
                                       Saving="saving.Contains(item.Id)"
                                       FocusRequested="focusTaskId == item.Id"
