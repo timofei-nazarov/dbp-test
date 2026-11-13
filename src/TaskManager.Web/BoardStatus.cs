@@ -15,4 +15,16 @@ public static class BoardStatus
         TaskStatuses.Archived => "Archived",
         _ => status
     };
+
+    public static string Token(string status) => status switch
+    {
+        TaskStatuses.NewTask => "new",
+        TaskStatuses.InDevelopment => "in-development",
+        TaskStatuses.InQa => "in-qa",
+        TaskStatuses.InCodeReview => "in-code-review",
+        TaskStatuses.ReadyForRelease => "ready-for-release",
+        TaskStatuses.Released => "released",
+        TaskStatuses.Archived => "archived",
+        _ => "new"
+    };
 }

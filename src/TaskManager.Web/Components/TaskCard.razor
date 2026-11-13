@@ -2,7 +2,7 @@
     <h3 id="task-title-@Item.Id" class="card-title">@Item.Title</h3>
     <p class="card-line">@(BoardRules.ExecutorName(Item.Executor) is { } name ? $"Executor: {name}" : "No executor")</p>
     <p class="card-line due">
-        @(BoardRules.DueText(Item.DateToFinish) is { } due ? $"Due: {due}" : "No due date")
+        @(BoardRules.DueText(Item.DateToFinish, DateOnly.FromDateTime(DateTime.UtcNow)) is { } due ? $"Due: {due}" : "No due date")
         @if (Item.IsOverdue)
         {
             <strong class="overdue-badge"> OVERDUE</strong>

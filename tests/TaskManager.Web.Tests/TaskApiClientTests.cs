@@ -15,7 +15,11 @@ namespace TaskManager.Web.Tests;
 public sealed class TaskApiClientTests
 {
     private const string TaskJson = """
-        {"id":5,"title":"Task 5","description":null,"date_created":"2026-11-10","date_updated":"2026-11-10","date_to_finish":"2026-11-01","condition":"released","priority":null,"author":null,"executor":null,"tag":[],"is_overdue":false}
+        {"id":5,"title":"Task 5","description":null,"date_created":"2026-11-10","date_updated":"2026-11-10","date_to_finish":"2026-11-01","condition":"released","priority":null,"author":null,"executor":null,"tag":[],"is_overdue":false,"overdue_days":null}
+        """;
+
+    private const string OverdueTaskJson = """
+        {"id":5,"title":"Task 5","description":null,"date_created":"2026-11-10","date_updated":"2026-11-10","date_to_finish":"2026-11-04","condition":"in_qa","priority":null,"author":null,"executor":null,"tag":[],"is_overdue":true,"overdue_days":6}
         """;
 
     private static string AccessToken() =>
@@ -23,7 +27,7 @@ public sealed class TaskApiClientTests
             claims: [new Claim("is_staff", "true")],
             expires: DateTime.UtcNow.AddMinutes(10)));
 
-    private sealed class StubHandler(HttpStatusCode patchStatus) : HttpMessageHandler
+    private sealed class StubHandler(HttpStatusCode patchStatus, string taskJson) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -39,16 +43,16 @@ public sealed class TaskApiClientTests
             {
                 return Task.FromResult(new HttpResponseMessage(patchStatus)
                 {
-                    Content = new StringContent(patchStatus == HttpStatusCode.OK ? TaskJson : "{}", Encoding.UTF8, "application/json")
+                    Content = new StringContent(patchStatus == HttpStatusCode.OK ? taskJson : "{}", Encoding.UTF8, "application/json")
                 });
             }
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
         }
     }
 
-    private sealed class StubFactory(HttpStatusCode patchStatus) : IHttpClientFactory
+    private sealed class StubFactory(HttpStatusCode patchStatus, string taskJson) : IHttpClientFactory
     {
-        public HttpClient CreateClient(string name) => new(new StubHandler(patchStatus)) { BaseAddress = new Uri("http://localhost/") };
+        public HttpClient CreateClient(string name) => new(new StubHandler(patchStatus, taskJson)) { BaseAddress = new Uri("http://localhost/") };
     }
 
     private sealed class NullJs : IJSRuntime
@@ -59,11 +63,11 @@ public sealed class TaskApiClientTests
             InvokeAsync<TValue>(identifier, args);
     }
 
-    private static async Task<TaskApiClient> SignedInClient(HttpStatusCode patchStatus)
+    private static async Task<TaskApiClient> SignedInClient(HttpStatusCode patchStatus, string taskJson = TaskJson)
     {
         var provider = new ServiceCollection().AddDataProtection().Services.BuildServiceProvider();
         var storage = new ProtectedSessionStorage(new NullJs(), provider.GetRequiredService<IDataProtectionProvider>());
-        var factory = new StubFactory(patchStatus);
+        var factory = new StubFactory(patchStatus, taskJson);
         var session = new UserSession(factory, storage, TimeProvider.System);
         Assert.True(await session.SignInAsync("anna", "secret"));
         return new TaskApiClient(factory, session);
@@ -78,7 +82,20 @@ public sealed class TaskApiClientTests
 
         Assert.Equal(SaveResult.Ok, result);
         Assert.False(task!.IsOverdue);
+        Assert.Null(task.OverdueDays);
         Assert.Equal("released", task.Condition);
+    }
+
+    [Fact]
+    public async Task SetConditionReadsOverdueDaysFromServerTask()
+    {
+        var client = await SignedInClient(HttpStatusCode.OK, OverdueTaskJson);
+
+        var (result, task) = await client.SetConditionAsync(5, "in_qa");
+
+        Assert.Equal(SaveResult.Ok, result);
+        Assert.True(task!.IsOverdue);
+        Assert.Equal(6, task.OverdueDays);
     }
 
     [Fact]
