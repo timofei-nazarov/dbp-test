@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using TaskManager.Api.Services;
+using TaskManager.Api.Demo;
 using TaskManager.Infrastructure.Data;
 using Xunit;
 

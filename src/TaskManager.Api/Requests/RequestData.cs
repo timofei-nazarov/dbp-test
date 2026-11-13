@@ -1,7 +1,8 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
+using TaskManager.Api.Errors;
 
-namespace TaskManager.Api.Api;
+namespace TaskManager.Api.Requests;
 
 public sealed class RequestData(JsonObject values, IFormFile? avatar = null)
 {

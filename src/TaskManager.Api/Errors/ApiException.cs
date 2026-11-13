@@ -1,4 +1,4 @@
-namespace TaskManager.Api.Api;
+namespace TaskManager.Api.Errors;
 
 public sealed class ApiException(int statusCode, object body) : Exception
 {

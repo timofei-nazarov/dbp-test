@@ -11,7 +11,4 @@ public static class TaskStatuses
     public const string Archived = "archived";
 
     public static readonly IReadOnlyList<string> All = [NewTask, InDevelopment, InQa, InCodeReview, ReadyForRelease, Released, Archived];
-
-    public static bool IsOverdue(DateOnly? dateToFinish, string status, DateOnly today) =>
-        dateToFinish is { } due && due < today && status is not (Released or Archived);
 }

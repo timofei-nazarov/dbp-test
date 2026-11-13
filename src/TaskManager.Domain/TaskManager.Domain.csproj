@@ -1,2 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../TaskManager.Contracts/TaskManager.Contracts.csproj" />
+  </ItemGroup>
 </Project>

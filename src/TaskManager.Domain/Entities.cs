@@ -1,3 +1,5 @@
+using TaskManager.Contracts;
+
 namespace TaskManager.Domain;
 
 public sealed class User
@@ -35,7 +37,7 @@ public sealed class WorkTask
     public DateOnly DateCreated { get; set; }
     public DateOnly DateUpdated { get; set; }
     public DateOnly? DateToFinish { get; set; }
-    public string Condition { get; set; } = "new_task";
+    public string Condition { get; set; } = TaskStatuses.NewTask;
     public short? Priority { get; set; }
     public long? AuthorId { get; set; }
     public User? Author { get; set; }

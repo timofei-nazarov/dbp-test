@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Infrastructure.Data;
 
-namespace TaskManager.Api.Api;
+namespace TaskManager.Api.Auth;
 
 public sealed class StaffWriteFilter(AppDbContext db) : IAsyncActionFilter
 {

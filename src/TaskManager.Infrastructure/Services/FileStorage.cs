@@ -1,8 +1,6 @@
 using Amazon;
 using Amazon.S3;
 using Amazon.S3.Model;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 
 namespace TaskManager.Infrastructure.Services;
@@ -14,9 +12,9 @@ public sealed class FileStorage : IDisposable
     private readonly string region;
     private readonly AmazonS3Client? s3;
 
-    public FileStorage(IConfiguration configuration, IWebHostEnvironment environment)
+    public FileStorage(IConfiguration configuration, string contentRootPath)
     {
-        root = Path.GetFullPath(configuration["Storage:Root"] ?? Path.Combine(environment.ContentRootPath, "media"));
+        root = Path.GetFullPath(configuration["Storage:Root"] ?? Path.Combine(contentRootPath, "media"));
         bucket = configuration["Storage:Bucket"];
         region = configuration["Storage:Region"] ?? "us-east-1";
         if (!string.IsNullOrWhiteSpace(bucket))
@@ -32,12 +30,11 @@ public sealed class FileStorage : IDisposable
     public string Root => root;
     public bool IsLocal => s3 is null;
 
-    public async Task<string> SaveAvatarAsync(IFormFile file, CancellationToken cancellationToken)
+    public async Task<string> SaveAvatarAsync(Stream content, string fileName, CancellationToken cancellationToken)
     {
-        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
         var key = $"{Guid.NewGuid():N}{extension}";
-        await using var stream = file.OpenReadStream();
-        await SaveAsync(key, stream, true, cancellationToken);
+        await SaveAsync(key, content, true, cancellationToken);
         return key;
     }
 

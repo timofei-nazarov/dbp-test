@@ -2,13 +2,13 @@ using System.Net.Mail;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
-using TaskManager.Api.Api;
+using TaskManager.Api.Errors;
 using TaskManager.Contracts;
 using TaskManager.Domain;
 using TaskManager.Infrastructure.Data;
 using TaskManager.Infrastructure.Services;
 
-namespace TaskManager.Api.Services;
+namespace TaskManager.Api.Requests;
 
 public sealed class EntityWriter(AppDbContext db, FileStorage storage)
 {
@@ -48,7 +48,8 @@ public sealed class EntityWriter(AppDbContext db, FileStorage storage)
             var extension = Path.GetExtension(data.Avatar.FileName).TrimStart('.').ToLowerInvariant();
             if (extension is not ("jpeg" or "jpg" or "png"))
                 throw ApiException.Invalid("avatar_picture", $"File extension “{extension}” is not allowed. Allowed extensions are: jpeg, jpg, png.");
-            user.AvatarPicture = await storage.SaveAvatarAsync(data.Avatar, cancellationToken);
+            await using var stream = data.Avatar.OpenReadStream();
+            user.AvatarPicture = await storage.SaveAvatarAsync(stream, data.Avatar.FileName, cancellationToken);
         }
         else if (data.Has("avatar_picture"))
         {

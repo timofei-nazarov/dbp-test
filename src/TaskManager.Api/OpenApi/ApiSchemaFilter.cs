@@ -4,7 +4,7 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 using TaskManager.Api.Controllers;
 using TaskManager.Contracts;
 
-namespace TaskManager.Api.Api;
+namespace TaskManager.Api.OpenApi;
 
 public sealed class ApiSchemaFilter : IOperationFilter
 {

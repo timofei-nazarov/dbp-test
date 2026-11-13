@@ -1,4 +1,4 @@
-namespace TaskManager.Api.Services;
+namespace TaskManager.Api.Errors;
 
 public sealed class ErrorReporter(HttpClient client, IConfiguration configuration, ILogger<ErrorReporter> logger)
 {

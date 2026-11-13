@@ -111,14 +111,31 @@ The only screens are the task board at `/board` (also `/`) and the sign-in page 
 | Project | Contents |
 | --- | --- |
 | `src/TaskManager.Contracts` | Request and response contracts and the status constants |
-| `src/TaskManager.Domain` | Entities |
-| `src/TaskManager.Infrastructure` | EF Core context and migrations, file storage, email |
+| `src/TaskManager.Domain` | Entities and task rules such as the overdue rule |
+| `src/TaskManager.Infrastructure` | EF Core context and migrations, file storage, email; no ASP.NET Core dependency |
 | `src/TaskManager.Web` | Blazor task board and sign-in page (Razor class library) |
 | `src/TaskManager.Api` | Controllers, API services, and the application host |
 | `tests/TaskManager.Api.Tests` | API integration tests |
 | `tests/TaskManager.Web.Tests` | Task board and sign-in page tests |
 
-Project references: Web -> Contracts; Api -> Contracts, Domain, Infrastructure, Web; Infrastructure -> Domain; Api.Tests -> Api; Web.Tests -> Web. Domain and Contracts have no project references.
+Project references: Web -> Contracts; Domain -> Contracts; Infrastructure -> Domain; Api -> Contracts, Domain, Infrastructure, Web; Api.Tests -> Api; Web.Tests -> Web. Contracts has no project references.
+
+`src/TaskManager.Api` is grouped by responsibility:
+
+| Folder | Contents |
+| --- | --- |
+| `Auth` | Token service and the staff write filter |
+| `Controllers` | API controllers |
+| `Demo` | Demo data seeder |
+| `Errors` | API exception and error reporting |
+| `Jobs` | Background job worker |
+| `OpenApi` | OpenAPI schema filter |
+| `Requests` | Request data and the entity writer |
+| `Responses` | Response representations |
+
+## Toolchain
+
+The .NET SDK is 10.0.404 (pinned in `global.json`), the runtime image is `mcr.microsoft.com/dotnet/aspnet:10.0.15`, and PostgreSQL is 16.2. A database volume created by PostgreSQL 15 is not compatible with the 16.2 image; this change does not touch existing volumes.
 
 ## Tests and development
 

@@ -371,7 +371,10 @@
         "type": "Project"
       },
       "taskmanager.domain": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "TaskManager.Contracts": "[1.0.0, )"
+        }
       },
       "taskmanager.infrastructure": {
         "type": "Project",
