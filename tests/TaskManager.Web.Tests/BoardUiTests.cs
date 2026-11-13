@@ -15,7 +15,7 @@ public sealed class BoardUiTests
     private static readonly DateOnly Today = new(2026, 11, 10);
 
     private static TaskResponse Task(long id, string title, string condition) =>
-        new(id, title, null, Today, Today, null, condition, null, null, null, [], false);
+        new(id, title, null, Today, Today, null, condition, null, null, null, [], false, null);
 
     private static async Task<string> Render(TaskResponse item, bool isStaff)
     {

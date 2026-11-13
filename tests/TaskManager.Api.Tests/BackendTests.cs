@@ -292,6 +292,7 @@ public sealed class BackendTests(ApiFixture fixture)
             if (created.Count == 0) json["executor"] = new JsonObject { ["username"] = executor };
             var task = await ObjectAsync(await fixture.Staff.PostAsJsonAsync("/api/tasks/", json), HttpStatusCode.Created);
             Assert.Equal(expected, task["is_overdue"]!.GetValue<bool>());
+            Assert.Equal(expected, task["overdue_days"] is not null);
             created.Add((task, expected));
         }
         var listed = await fixture.Reader.GetFromJsonAsync<JsonArray>($"/api/tasks/?tag={tag}");
@@ -320,6 +321,79 @@ public sealed class BackendTests(ApiFixture fixture)
         Assert.True(await PatchAsync(new { date_to_finish = today.AddDays(-1).ToString("yyyy-MM-dd"), is_overdue = false }));
         Assert.False(await PatchAsync(new { condition = "released" }));
         Assert.True(await PatchAsync(new { condition = "in_qa" }));
+    }
+
+    [Fact]
+    public async Task OverdueDaysFollowsOverdueFlag()
+    {
+        var today = DateOnly.FromDateTime(fixture.Clock.GetUtcNow().UtcDateTime);
+        var tag = fixture.Unique("days-tag");
+        var executor = fixture.Unique("days");
+        var cases = new (object Payload, int? Expected)[]
+        {
+            (new { title = "a", date_to_finish = today.AddDays(-6).ToString("yyyy-MM-dd"), condition = "in_qa" }, 6),
+            (new { title = "b", date_to_finish = today.AddDays(-1).ToString("yyyy-MM-dd") }, 1),
+            (new { title = "c", date_to_finish = today.AddDays(-6).ToString("yyyy-MM-dd"), condition = "released" }, null),
+            (new { title = "d", date_to_finish = today.ToString("yyyy-MM-dd") }, null),
+            (new { title = "e" }, null),
+        };
+        var created = new List<(JsonObject Task, int? Expected)>();
+        foreach (var (payload, expected) in cases)
+        {
+            var json = JsonSerializer.SerializeToNode(payload)!.AsObject();
+            json["tag"] = new JsonArray(new JsonObject { ["title"] = tag });
+            if (created.Count == 0) json["executor"] = new JsonObject { ["username"] = executor };
+            created.Add((await ObjectAsync(await fixture.Staff.PostAsJsonAsync("/api/tasks/", json), HttpStatusCode.Created), expected));
+        }
+        static void Check(JsonObject task, int? expected)
+        {
+            Assert.True(task.ContainsKey("overdue_days"));
+            Assert.Equal(expected, task["overdue_days"]?.GetValue<int>());
+            Assert.Equal(task["is_overdue"]!.GetValue<bool>(), task["overdue_days"] is not null);
+        }
+        var listed = await fixture.Reader.GetFromJsonAsync<JsonArray>($"/api/tasks/?tag={tag}");
+        Assert.Equal(created.Count, listed!.Count);
+        for (var i = 0; i < created.Count; i++)
+        {
+            Check(created[i].Task, created[i].Expected);
+            Check(listed[i]!.AsObject(), created[i].Expected);
+            var id = created[i].Task["id"]!.GetValue<long>();
+            Check(await ObjectAsync(await fixture.Reader.GetAsync($"/api/tasks/{id}/")), created[i].Expected);
+        }
+        var executorId = created[0].Task["executor"]!["id"]!.GetValue<long>();
+        Check(await ObjectAsync(await fixture.Reader.GetAsync($"/api/users/{executorId}/tasks/{created[0].Task["id"]!.GetValue<long>()}/")), 6);
+    }
+
+    [Fact]
+    public async Task OverdueDaysIsRecomputedOnUpdate()
+    {
+        var today = DateOnly.FromDateTime(fixture.Clock.GetUtcNow().UtcDateTime);
+        var task = await CreateTaskAsync(new { title = "recompute days", date_to_finish = today.AddDays(5).ToString("yyyy-MM-dd") });
+        Assert.Null(task["overdue_days"]);
+        var url = $"/api/tasks/{task["id"]!.GetValue<long>()}/";
+        async Task<int?> PatchAsync(object payload) =>
+            (await ObjectAsync(await fixture.Staff.PatchAsJsonAsync(url, payload)))["overdue_days"]?.GetValue<int>();
+        Assert.Equal(3, await PatchAsync(new { date_to_finish = today.AddDays(-3).ToString("yyyy-MM-dd") }));
+        Assert.Null(await PatchAsync(new { condition = "released" }));
+        Assert.Equal(3, await PatchAsync(new { condition = "in_qa" }));
+        Assert.Equal(10, await PatchAsync(new { date_to_finish = today.AddDays(-10).ToString("yyyy-MM-dd") }));
+    }
+
+    [Fact]
+    public async Task OverdueDaysInRequestBodyIsIgnored()
+    {
+        var today = DateOnly.FromDateTime(fixture.Clock.GetUtcNow().UtcDateTime);
+        var created = await ObjectAsync(await fixture.Staff.PostAsJsonAsync("/api/tasks/",
+            new { title = "ignored", date_to_finish = today.AddDays(2).ToString("yyyy-MM-dd"), overdue_days = 99, is_overdue = true }), HttpStatusCode.Created);
+        Assert.Null(created["overdue_days"]);
+        Assert.False(created["is_overdue"]!.GetValue<bool>());
+        var url = $"/api/tasks/{created["id"]!.GetValue<long>()}/";
+        var patched = await ObjectAsync(await fixture.Staff.PatchAsJsonAsync(url,
+            new { date_to_finish = today.AddDays(-2).ToString("yyyy-MM-dd"), overdue_days = 99, is_overdue = false }));
+        Assert.Equal(2, patched["overdue_days"]!.GetValue<int>());
+        Assert.True(patched["is_overdue"]!.GetValue<bool>());
+        var again = await ObjectAsync(await fixture.Staff.PatchAsJsonAsync(url, new { title = "ignored too", overdue_days = 99 }));
+        Assert.Equal(2, again["overdue_days"]!.GetValue<int>());
     }
 
     [Fact]

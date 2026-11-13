@@ -39,6 +39,40 @@ public sealed class TaskRulesTests
     {
         Assert.False(TaskRules.IsOverdue(null, TaskStatuses.NewTask, Today));
     }
+
+    [Fact]
+    public void OverdueDaysIsWholeDaysSinceDueDateWhenOverdue()
+    {
+        Assert.Equal(6, TaskRules.OverdueDays(new DateOnly(2026, 11, 4), TaskStatuses.InQa, Today));
+        Assert.Equal(1, TaskRules.OverdueDays(Today.AddDays(-1), TaskStatuses.NewTask, Today));
+    }
+
+    [Theory]
+    [InlineData(0, "in_qa")]
+    [InlineData(3, "in_qa")]
+    [InlineData(null, "new_task")]
+    [InlineData(-5, "released")]
+    [InlineData(-5, "archived")]
+    public void OverdueDaysIsNullWhenNotOverdue(int? offset, string status)
+    {
+        DateOnly? due = offset is { } days ? Today.AddDays(days) : null;
+        Assert.Null(TaskRules.OverdueDays(due, status, Today));
+    }
+
+    [Theory]
+    [InlineData(-10, "new_task")]
+    [InlineData(-1, "in_development")]
+    [InlineData(0, "in_qa")]
+    [InlineData(4, "in_code_review")]
+    [InlineData(-3, "ready_for_release")]
+    [InlineData(-3, "released")]
+    [InlineData(-3, "archived")]
+    [InlineData(null, "new_task")]
+    public void OverdueDaysIsNotNullExactlyWhenOverdue(int? offset, string status)
+    {
+        DateOnly? due = offset is { } days ? Today.AddDays(days) : null;
+        Assert.Equal(TaskRules.IsOverdue(due, status, Today), TaskRules.OverdueDays(due, status, Today) is not null);
+    }
 }
 
 public sealed class WorkTaskDefaultsTests
