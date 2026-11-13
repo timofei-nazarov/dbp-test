@@ -1,35 +1,74 @@
-<article class="card @(Item.IsOverdue ? "overdue" : null)" aria-labelledby="task-title-@Item.Id" tabindex="@(IsStaff ? null : "0")">
-    <h3 id="task-title-@Item.Id" class="card-title">@Item.Title</h3>
-    <p class="card-line">@(BoardRules.ExecutorName(Item.Executor) is { } name ? $"Executor: {name}" : "No executor")</p>
-    <p class="card-line due">
-        @(BoardRules.DueText(Item.DateToFinish) is { } due ? $"Due: {due}" : "No due date")
-        @if (Item.IsOverdue)
+<article class="card" aria-labelledby="task-title-@Item.Id" tabindex="@(IsStaff ? null : "0")">
+    <div class="card-row card-row-title">
+        <h3 id="task-title-@Item.Id" class="card-title">@Item.Title</h3>
+        @if (IsStaff && Mobile)
         {
-            <strong class="overdue-badge"> OVERDUE</strong>
+            @Menu
         }
-    </p>
-    @if (IsStaff)
+    </div>
+    <div class="card-row card-row-executor">
+        @if (Item.Executor is { } executor)
+        {
+            <span class="avatar avatar-card avatar-tone-@BoardRules.AvatarTone(executor.Id)" aria-hidden="true">@BoardRules.Initials(executor.FirstName, executor.LastName, executor.Username)</span>
+            <span class="card-executor">@BoardRules.ExecutorName(executor)</span>
+        }
+        else
+        {
+            <span class="avatar-empty" aria-hidden="true"></span>
+            <span class="card-executor muted">Unassigned</span>
+        }
+        @if (IsStaff && !Mobile)
+        {
+            @Menu
+        }
+    </div>
+    <div class="card-row card-row-due">
+        @if (BoardRules.DueText(Item.DateToFinish, Today) is { } due)
+        {
+            <span class="card-due @(Item.OverdueDays is not null ? "overdue" : null)">@due</span>
+            @if (Item.OverdueDays is { } days)
+            {
+                <span class="overdue-pill">
+                    <span aria-hidden="true">@BoardRules.OverdueLabel(days)</span>
+                    <span class="visually-hidden">@BoardRules.OverdueAccessibleText(days)</span>
+                </span>
+            }
+        }
+        else
+        {
+            <span class="card-due muted">No due date</span>
+        }
+    </div>
+</article>
+
+@code {
+    private RenderFragment Menu => __builder =>
     {
         <StatusMenu TaskId="Item.Id"
                     Condition="@Item.Condition"
                     IsOpen="MenuOpen"
                     IsSaving="Saving"
                     FocusRequested="FocusRequested"
+                    Mobile="Mobile"
+                    Module="Module"
                     OnOpen="OnOpen"
                     OnClose="OnClose"
                     OnSelect="OnSelect"
-                    OnFocusHandled="OnFocusHandled" />
-    }
-</article>
+                    OnFocusHandled="OnFocusHandled"
+                    OnPopupReady="OnPopupReady" />
+    };
 
-@code {
     [Parameter, EditorRequired] public TaskResponse Item { get; set; } = default!;
     [Parameter] public bool IsStaff { get; set; }
     [Parameter] public bool MenuOpen { get; set; }
     [Parameter] public bool Saving { get; set; }
     [Parameter] public bool FocusRequested { get; set; }
+    [Parameter] public bool Mobile { get; set; }
+    [Parameter] public DateOnly Today { get; set; }
+    [Parameter] public IJSObjectReference? Module { get; set; }
     [Parameter] public EventCallback<long> OnOpen { get; set; }
     [Parameter] public EventCallback<long> OnClose { get; set; }
     [Parameter] public EventCallback<(long Id, string Status)> OnSelect { get; set; }
     [Parameter] public EventCallback<long> OnFocusHandled { get; set; }
+    [Parameter] public EventCallback<ElementReference> OnPopupReady { get; set; }
 }

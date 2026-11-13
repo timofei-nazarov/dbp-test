@@ -91,6 +91,13 @@ public sealed class StylesheetTests
     [InlineData("color-danger-text", "#B91C1C")]
     [InlineData("color-danger-soft", "#FEE2E2")]
     [InlineData("color-danger-softer", "#FEF2F2")]
+    [InlineData("color-count", "#DDE1E8")]
+    [InlineData("color-scroll-thumb", "#A5B4FC")]
+    [InlineData("color-accent-strong", "#4338CA")]
+    [InlineData("font-size-xs", "0.75rem")]
+    [InlineData("font-size-meta", "0.8125rem")]
+    [InlineData("font-size-avatar", "0.625rem")]
+    [InlineData("size-dialog", "380px")]
     [InlineData("status-new", "#9CA3AF")]
     [InlineData("status-in-development", "#3B82F6")]
     [InlineData("status-in-qa", "#F59E0B")]
@@ -109,7 +116,30 @@ public sealed class StylesheetTests
     }
 
     [Theory]
+    [InlineData(0, "#E0E7FF", "#3730A3")]
+    [InlineData(1, "#DBEAFE", "#1E40AF")]
+    [InlineData(2, "#FEF3C7", "#92400E")]
+    [InlineData(3, "#EDE9FE", "#5B21B6")]
+    [InlineData(4, "#CCFBF1", "#115E59")]
+    [InlineData(5, "#DCFCE7", "#166534")]
+    [InlineData(6, "#FCE7F3", "#9D174D")]
+    [InlineData(7, "#FFEDD5", "#9A3412")]
+    public void Stylesheet_AvatarPaletteHasEightPairsWithContrast(int index, string background, string foreground)
+    {
+        Assert.Equal(background, Token($"avatar-{index}-bg"), ignoreCase: true);
+        Assert.Equal(foreground, Token($"avatar-{index}-fg"), ignoreCase: true);
+        Assert.True(Contrast($"avatar-{index}-fg", $"avatar-{index}-bg") >= 4.5);
+        var rule = Rule($".avatar-tone-{index}");
+        Assert.Contains($"background: var(--avatar-{index}-bg);", rule);
+        Assert.Contains($"color: var(--avatar-{index}-fg);", rule);
+    }
+
+    [Theory]
     [InlineData("color-text", "color-page", 4.5)]
+    [InlineData("color-accent-strong", "color-accent-soft", 4.5)]
+    [InlineData("color-text-secondary", "color-count", 4.5)]
+    [InlineData("color-on-accent", "color-danger", 4.5)]
+    [InlineData("color-control-border", "color-page", 3)]
     [InlineData("color-text", "color-card", 4.5)]
     [InlineData("color-text", "color-column", 4.5)]
     [InlineData("color-text-secondary", "color-page", 4.5)]
@@ -137,7 +167,7 @@ public sealed class StylesheetTests
 
         Assert.Contains("outline: 2px solid var(--color-accent);", rule);
         Assert.Contains("outline-offset: 2px;", rule);
-        Assert.DoesNotContain("dashed", Css);
+        Assert.DoesNotContain("dashed", rule);
         Assert.DoesNotContain("outline: none", Css);
         Assert.DoesNotContain("outline-color", Css);
     }
@@ -152,9 +182,25 @@ public sealed class StylesheetTests
     }
 
     [Fact]
+    public void Stylesheet_HasBreakpointsAt640And1024()
+    {
+        Assert.Contains("@media (max-width: 639.98px)", Css);
+        Assert.Contains("@media (max-width: 1023.98px)", Css);
+    }
+
+    [Fact]
     public void Stylesheet_HasReducedMotionBlock()
     {
         Assert.Contains("@media (prefers-reduced-motion: reduce)", Css);
+    }
+
+    [Fact]
+    public void Stylesheet_ReducedMotionDisablesSkeletonAndSheetAnimation()
+    {
+        var start = Css.IndexOf("@media (prefers-reduced-motion: reduce)", StringComparison.Ordinal);
+        var block = Css[start..];
+
+        Assert.Matches(@"\.skeleton,\s*\.sheet\s*\{\s*animation:\s*none;", block);
     }
 
     [Fact]

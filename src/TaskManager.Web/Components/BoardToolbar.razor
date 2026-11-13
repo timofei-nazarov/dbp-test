@@ -1,0 +1,155 @@
+@implements IAsyncDisposable
+
+<div class="toolbar">
+    <div class="search-field">
+        <Icon Name="search" />
+        <input type="search"
+               @ref="searchInput"
+               aria-label="Search tasks"
+               placeholder="Search tasks"
+               value="@Filter.Search"
+               @oninput="SearchChangedAsync" />
+    </div>
+    <select class="executor-select" aria-label="Executor" @onchange="ExecutorChangedAsync">
+        @foreach (var option in Executors)
+        {
+            <option value="@option.Value" selected="@(option.Value == Filter.Executor)">@option.Label</option>
+        }
+    </select>
+    @if (Mobile)
+    {
+        <div class="chips" role="group" aria-label="Filter by status">
+            <button type="button" class="chip" aria-pressed="@(AllPressed ? "true" : "false")" @onclick="OnAll">All @AllCount</button>
+            <button type="button" class="chip chip-overdue" aria-pressed="@(Filter.OverdueOnly ? "true" : "false")" disabled="@OverdueDisabled" @onclick="OnOverdue">Overdue @OverdueCount</button>
+            @foreach (var status in TaskStatuses.All)
+            {
+                var value = status;
+                <button type="button" class="chip" aria-pressed="@(Filter.Status == value ? "true" : "false")" @onclick="() => StatusChipAsync(value)">@BoardStatus.Label(value) @StatusCount(value)</button>
+            }
+        </div>
+    }
+    else
+    {
+        <button type="button" class="overdue-toggle" aria-pressed="@(Filter.OverdueOnly ? "true" : "false")" disabled="@OverdueDisabled" @onclick="OnOverdue">
+            <span class="toggle-dot" aria-hidden="true"></span>Overdue @OverdueCount
+        </button>
+        <div class="help-wrap">
+            <button type="button"
+                    class="help-button"
+                    @ref="helpButton"
+                    aria-label="Keyboard shortcuts"
+                    aria-expanded="@(helpOpen ? "true" : "false")"
+                    aria-controls="shortcuts-panel"
+                    @onclick="ToggleHelp">?</button>
+            @if (helpOpen)
+            {
+                <div id="shortcuts-panel" class="shortcuts-panel" @ref="helpPanel">
+                    <h2>Keyboard shortcuts</h2>
+                    <dl>
+                        <div class="shortcut-row"><dt><kbd>Tab</kbd> / <kbd>Shift+Tab</kbd></dt><dd>Move between cards and controls</dd></div>
+                        <div class="shortcut-row"><dt><kbd>Enter</kbd> / <kbd>Space</kbd></dt><dd>Open the status list</dd></div>
+                        <div class="shortcut-row"><dt><kbd>↑</kbd> <kbd>↓</kbd> <kbd>Home</kbd> <kbd>End</kbd></dt><dd>Choose a status</dd></div>
+                        <div class="shortcut-row"><dt><kbd>Enter</kbd> / <kbd>Esc</kbd></dt><dd>Confirm / Cancel</dd></div>
+                    </dl>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private ElementReference searchInput;
+    private ElementReference helpButton;
+    private ElementReference helpPanel;
+    private DotNetObjectReference<BoardToolbar>? self;
+    private IJSObjectReference? popoverWatch;
+    private bool helpOpen;
+
+    [Parameter, EditorRequired] public BoardFilter Filter { get; set; } = new();
+    [Parameter, EditorRequired] public IReadOnlyList<ExecutorOption> Executors { get; set; } = [];
+    [Parameter] public int OverdueCount { get; set; }
+    [Parameter] public int AllCount { get; set; }
+    [Parameter] public IReadOnlyDictionary<string, int> StatusCounts { get; set; } = new Dictionary<string, int>();
+    [Parameter] public bool Mobile { get; set; }
+    [Parameter] public IJSObjectReference? Module { get; set; }
+    [Parameter] public EventCallback<string> OnSearch { get; set; }
+    [Parameter] public EventCallback<string> OnExecutor { get; set; }
+    [Parameter] public EventCallback OnOverdue { get; set; }
+    [Parameter] public EventCallback<string?> OnStatus { get; set; }
+    [Parameter] public EventCallback OnAll { get; set; }
+
+    private bool AllPressed => !Filter.OverdueOnly && Filter.Status is null;
+
+    private bool OverdueDisabled => OverdueCount == 0 && !Filter.OverdueOnly;
+
+    public ValueTask FocusSearchAsync() => searchInput.FocusAsync();
+
+    private int StatusCount(string status) => StatusCounts.TryGetValue(status, out var count) ? count : 0;
+
+    protected override void OnParametersSet()
+    {
+        if (Mobile)
+        {
+            helpOpen = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (helpOpen && popoverWatch is null && Module is not null)
+        {
+            self ??= DotNetObjectReference.Create(this);
+            popoverWatch = await Module.InvokeAsync<IJSObjectReference>("watchPopover", helpPanel, helpButton, self);
+        }
+        else if (!helpOpen && popoverWatch is not null)
+        {
+            await ReleaseWatchAsync();
+        }
+    }
+
+    private Task SearchChangedAsync(ChangeEventArgs args) => OnSearch.InvokeAsync(args.Value?.ToString() ?? "");
+
+    private Task ExecutorChangedAsync(ChangeEventArgs args) => OnExecutor.InvokeAsync(args.Value?.ToString() ?? BoardFilter.AllExecutors);
+
+    private Task StatusChipAsync(string status) => OnStatus.InvokeAsync(Filter.Status == status ? null : status);
+
+    private void ToggleHelp() => helpOpen = !helpOpen;
+
+    [JSInvokable]
+    public async Task ClosePanel(bool viaEscape)
+    {
+        await InvokeAsync(async () =>
+        {
+            helpOpen = false;
+            StateHasChanged();
+            if (viaEscape)
+            {
+                await helpButton.FocusAsync();
+            }
+        });
+    }
+
+    private async Task ReleaseWatchAsync()
+    {
+        var watch = popoverWatch;
+        popoverWatch = null;
+        if (watch is null)
+        {
+            return;
+        }
+        try
+        {
+            await watch.InvokeVoidAsync("dispose");
+            await watch.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await ReleaseWatchAsync();
+        self?.Dispose();
+    }
+}

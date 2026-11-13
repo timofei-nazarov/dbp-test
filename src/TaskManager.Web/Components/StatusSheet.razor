@@ -1,0 +1,78 @@
+@implements IAsyncDisposable
+
+<div class="sheet-backdrop" @onclick="OnClose"></div>
+<div class="sheet"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="sheet-title"
+     @ref="sheet"
+     @onkeydown="OnKeyDown">
+    <span class="sheet-handle" aria-hidden="true"></span>
+    <h2 id="sheet-title">Move task</h2>
+    <p class="sheet-task">@TaskTitle</p>
+    <StatusOptions @ref="options"
+                   TaskId="TaskId"
+                   Condition="@Condition"
+                   Tabbable="true"
+                   CloseOnBlur="false"
+                   OnChoose="OnChoose"
+                   OnEscape="OnClose" />
+    <button type="button" class="button-secondary sheet-cancel" @onclick="OnClose">Cancel</button>
+</div>
+
+@code {
+    private ElementReference sheet;
+    private StatusOptions? options;
+    private IJSObjectReference? trap;
+    private IJSObjectReference? scrollLock;
+
+    [Parameter, EditorRequired] public long TaskId { get; set; }
+    [Parameter, EditorRequired] public string TaskTitle { get; set; } = "";
+    [Parameter, EditorRequired] public string Condition { get; set; } = "";
+    [Parameter] public IJSObjectReference? Module { get; set; }
+    [Parameter] public EventCallback<string> OnChoose { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Module is not null)
+        {
+            trap = await Module.InvokeAsync<IJSObjectReference>("trapFocus", sheet);
+            scrollLock = await Module.InvokeAsync<IJSObjectReference>("lockScroll");
+            if (options is not null)
+            {
+                await options.FocusAsync(false);
+            }
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+
+    private static async Task ReleaseAsync(IJSObjectReference? handle)
+    {
+        if (handle is null)
+        {
+            return;
+        }
+        try
+        {
+            await handle.InvokeVoidAsync("dispose");
+            await handle.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await ReleaseAsync(trap);
+        await ReleaseAsync(scrollLock);
+    }
+}
