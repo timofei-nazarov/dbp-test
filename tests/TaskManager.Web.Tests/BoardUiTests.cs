@@ -244,8 +244,81 @@ public sealed class BoardUiTests
         var card = await Render(Task(1, "A", "in_qa"), true);
         var options = await RenderOptions("in_qa");
         var column = await RenderColumn(1, false);
+        var toolbar = await RenderToolbar(new BoardFilter(), 1, false);
+        var all = card + options + column + toolbar;
 
-        Assert.DoesNotContain("role=\"status\"", card + options + column);
-        Assert.DoesNotContain("aria-live", card + options + column);
+        Assert.DoesNotContain("role=\"status\"", all);
+        Assert.DoesNotContain("aria-live", all);
+    }
+
+    private static Task<string> RenderToolbar(BoardFilter filter, int overdueCount, bool mobile) =>
+        RenderComponent<BoardToolbar>(new()
+        {
+            ["Filter"] = filter,
+            ["Executors"] = BoardRules.ExecutorOptions([Task(1, "A", "new_task", User(4, "zed", "Zed", "Last"))]),
+            ["OverdueCount"] = overdueCount,
+            ["AllCount"] = 5,
+            ["StatusCounts"] = (IReadOnlyDictionary<string, int>)TaskStatuses.All.ToDictionary(status => status, _ => 2),
+            ["Mobile"] = mobile
+        });
+
+    [Fact]
+    public async Task BoardToolbarRendersControlsAndOverdueButtonDisabledWhenZero()
+    {
+        var html = await RenderToolbar(new BoardFilter(), 0, false);
+
+        Assert.Contains("type=\"search\"", html);
+        Assert.Contains("aria-label=\"Search tasks\"", html);
+        Assert.Contains("placeholder=\"Search tasks\"", html);
+        Assert.Contains("aria-label=\"Executor\"", html);
+        Assert.Contains(">All executors</option>", html);
+        Assert.Contains(">Unassigned</option>", html);
+        Assert.Contains(">Zed Last</option>", html);
+        Assert.Matches("<button[^>]*class=\"overdue-toggle\"[^>]*aria-pressed=\"false\"[^>]*disabled", html);
+        Assert.Contains("Overdue 0", html);
+        Assert.Matches("class=\"help-button\"[^>]*aria-label=\"Keyboard shortcuts\"[^>]*aria-expanded=\"false\"[^>]*aria-controls=\"shortcuts-panel\"", html);
+        Assert.DoesNotContain("shortcuts-panel\" class", html);
+    }
+
+    [Fact]
+    public async Task BoardToolbarKeepsPressedOverdueButtonEnabledAtZero()
+    {
+        var html = await RenderToolbar(new BoardFilter(OverdueOnly: true), 0, false);
+
+        Assert.Matches("class=\"overdue-toggle\"[^>]*aria-pressed=\"true\"", html);
+        Assert.DoesNotMatch("class=\"overdue-toggle\"[^>]*disabled", html);
+    }
+
+    [Fact]
+    public async Task BoardToolbarHasNoLiveRegion()
+    {
+        var html = await RenderToolbar(new BoardFilter(), 3, false);
+
+        Assert.DoesNotContain("role=\"status\"", html);
+        Assert.DoesNotContain("aria-live", html);
+    }
+
+    [Fact]
+    public async Task BoardToolbarMobileShowsChipsAndNoHelpButton()
+    {
+        var html = await RenderToolbar(new BoardFilter(Status: "in_qa"), 3, true);
+
+        Assert.DoesNotContain("help-button", html);
+        Assert.DoesNotContain("overdue-toggle", html);
+        Assert.Contains("role=\"group\" aria-label=\"Filter by status\"", html);
+        Assert.Equal(9, Regex.Matches(html, "class=\"chip[ \"]").Count);
+        Assert.Contains(">All 5</button>", html);
+        Assert.Contains(">Overdue 3</button>", html);
+        Assert.Contains(">In development 2</button>", html);
+        Assert.Matches("<button[^>]*class=\"chip\"[^>]*aria-pressed=\"true\"[^>]*>In QA 2</button>", html);
+        Assert.Matches("<button[^>]*class=\"chip\"[^>]*aria-pressed=\"false\"[^>]*>All 5</button>", html);
+    }
+
+    [Fact]
+    public async Task BoardToolbarMobileAllChipIsPressedWithoutOverdueAndStatus()
+    {
+        var html = await RenderToolbar(new BoardFilter(), 3, true);
+
+        Assert.Matches("<button[^>]*class=\"chip\"[^>]*aria-pressed=\"true\"[^>]*>All 5</button>", html);
     }
 }

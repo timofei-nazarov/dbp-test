@@ -8,14 +8,31 @@
 @inject TimeProvider Clock
 
 <main class="page">
-    <header class="page-header">
-        <h1>Board</h1>
-        @if (ready)
+    <header class="page-header" inert="@boardInert">
+        <div class="page-heading">
+            <h1>Board</h1>
+            @if (ready)
+            {
+                <p class="page-summary">@BoardRules.Summary(loading || loadFailed ? null : tasks, isStaff)</p>
+            }
+        </div>
+        @if (ready && !loading && !loadFailed)
         {
-            <p class="page-summary">@BoardRules.Summary(loading || loadFailed ? null : tasks, isStaff)</p>
+            <BoardToolbar @ref="toolbar"
+                          Filter="filter"
+                          Executors="executorOptions"
+                          OverdueCount="overdueCount"
+                          AllCount="allCount"
+                          StatusCounts="statusCounts"
+                          Mobile="isMobile"
+                          Module="module"
+                          OnSearch="SearchChanged"
+                          OnExecutor="ExecutorChanged"
+                          OnOverdue="ToggleOverdue"
+                          OnStatus="StatusChanged"
+                          OnAll="ShowAll" />
         }
     </header>
-    <p class="hint">Tab moves between cards. Enter or Space opens the status list. Arrow keys choose, Enter confirms, Esc cancels.</p>
     <div role="status" aria-live="polite" class="live">
         @if (errorMessage is not null)
         {
@@ -23,34 +40,60 @@
         }
         <span class="visually-hidden">@announcement</span>
     </div>
-    <div id="board-root" inert="@(pendingArchive is not null)">
+    <div id="board-root" inert="@boardInert" aria-busy="@(loading ? "true" : null)">
         @if (loadFailed)
         {
-            <div class="load-error">
-                <p>Could not load tasks.</p>
-                <button type="button" @onclick="LoadAsync">Retry</button>
+            <div class="banner banner-error">
+                <svg class="banner-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                    <circle cx="8" cy="8" r="8" fill="currentColor" />
+                    <path d="M8 4.5v4M8 11.2v.1" fill="none" stroke-width="1.8" stroke-linecap="round" />
+                </svg>
+                <span>Could not load tasks.</span>
+                <button type="button" class="button-secondary banner-action" @onclick="LoadAsync">Retry</button>
+            </div>
+        }
+        else if (noMatch)
+        {
+            <div class="empty-result">
+                <p>No tasks match the filters</p>
+                <button type="button" class="button-secondary" @onclick="ClearFilters">Clear filters</button>
+            </div>
+        }
+        else if (isMobile)
+        {
+            <div class="groups">
+                @foreach (var column in columns.Where(column => loading || column.Tasks.Count > 0))
+                {
+                    <BoardColumn Status="@column.Status" Tasks="column.Tasks" Loading="loading" Mobile="true" Card="CardTemplate" />
+                }
+                @if (!loading && tasks.Count == 0)
+                {
+                    <p class="column-note">No tasks</p>
+                }
             </div>
         }
         else
         {
-            <div class="columns">
-                @foreach (var column in columns)
+            <div class="columns-wrap @(fadeLeft ? "has-left" : null) @(fadeRight ? "has-right" : null)">
+                <div class="columns-scroll" @ref="columnsScroller">
+                    <div class="columns">
+                        @foreach (var column in columns)
+                        {
+                            <BoardColumn Status="@column.Status" Tasks="column.Tasks" Loading="loading" Card="CardTemplate" />
+                        }
+                    </div>
+                    @if (overflowing)
+                    {
+                        <p class="columns-note">Showing @visibleColumns of @TaskStatuses.All.Count statuses</p>
+                    }
+                </div>
+                @if (fadeLeft)
                 {
-                    <BoardColumn Status="@column.Status" Tasks="column.Tasks" Loading="loading">
-                        <Card Context="item">
-                            <TaskCard Item="item"
-                                      IsStaff="isStaff"
-                                      Today="DateOnly.FromDateTime(Clock.GetUtcNow().UtcDateTime)"
-                                      Module="module"
-                                      MenuOpen="openMenuTaskId == item.Id"
-                                      Saving="saving.Contains(item.Id)"
-                                      FocusRequested="focusTaskId == item.Id"
-                                      OnOpen="OpenMenu"
-                                      OnClose="CloseMenu"
-                                      OnSelect="SelectStatusAsync"
-                                      OnFocusHandled="FocusHandled" />
-                        </Card>
-                    </BoardColumn>
+                    <div class="fade fade-left" aria-hidden="true"></div>
+                }
+                @if (fadeRight)
+                {
+                    <div class="fade fade-right" aria-hidden="true"></div>
                 }
             </div>
         }
@@ -67,9 +110,28 @@
 @code {
     private IJSObjectReference? module;
     private IJSObjectReference? keyGuard;
+    private IJSObjectReference? viewportWatch;
+    private IJSObjectReference? columnsWatch;
+    private IJSObjectReference? dismissWatch;
+    private DotNetObjectReference<Board>? self;
+    private CancellationTokenSource? announceDelay;
+    private BoardToolbar? toolbar;
+    private ElementReference columnsScroller;
     private List<TaskResponse> tasks = [];
+    private IReadOnlyList<TaskResponse> visible = [];
     private IReadOnlyList<(string Status, IReadOnlyList<TaskResponse> Tasks)> columns = BoardRules.Group([]);
+    private IReadOnlyList<ExecutorOption> executorOptions = BoardRules.ExecutorOptions([]);
+    private IReadOnlyDictionary<string, int> statusCounts = new Dictionary<string, int>();
+    private BoardFilter filter = new();
     private readonly HashSet<long> saving = [];
+    private int allCount;
+    private int overdueCount;
+    private int visibleColumns;
+    private bool fadeLeft;
+    private bool fadeRight;
+    private bool overflowing;
+    private bool isMobile;
+    private bool focusSearch;
     private bool ready;
     private bool loading = true;
     private bool loadFailed;
@@ -80,24 +142,129 @@
     private string announcement = "";
     private string? errorMessage;
 
+    private bool boardInert => pendingArchive is not null;
+
+    private bool noMatch => ready && !loading && !loadFailed && tasks.Count > 0 && visible.Count == 0;
+
+    private bool showColumns => ready && !loadFailed && !isMobile && !noMatch;
+
+    private DateOnly Today => DateOnly.FromDateTime(Clock.GetUtcNow().UtcDateTime);
+
+    private RenderFragment<TaskResponse> CardTemplate => item => __builder =>
+    {
+        <TaskCard Item="item"
+                  IsStaff="isStaff"
+                  Today="Today"
+                  Mobile="isMobile"
+                  Module="module"
+                  MenuOpen="openMenuTaskId == item.Id"
+                  Saving="saving.Contains(item.Id)"
+                  FocusRequested="focusTaskId == item.Id"
+                  OnOpen="OpenMenu"
+                  OnClose="CloseMenu"
+                  OnSelect="SelectStatusAsync"
+                  OnFocusHandled="FocusHandled"
+                  OnPopupReady="PopupReadyAsync" />
+    };
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender)
+        if (firstRender)
         {
+            module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/TaskManager.Web/board.js");
+            keyGuard = await module.InvokeAsync<IJSObjectReference>("installKeyGuard");
+            self = DotNetObjectReference.Create(this);
+            isMobile = await module.InvokeAsync<bool>("isMobileViewport");
+            viewportWatch = await module.InvokeAsync<IJSObjectReference>("observeViewport", self);
+            if (!await Session.RestoreAsync())
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+            isStaff = Session.IsStaff;
+            ready = true;
+            await LoadAsync();
+            StateHasChanged();
             return;
         }
-        module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/TaskManager.Web/board.js");
-        keyGuard = await module.InvokeAsync<IJSObjectReference>("installKeyGuard");
-        if (!await Session.RestoreAsync())
-        {
-            Navigation.NavigateTo("/login");
-            return;
-        }
-        isStaff = Session.IsStaff;
-        ready = true;
-        await LoadAsync();
-        StateHasChanged();
+        await SyncWatchesAsync();
     }
+
+    private async Task SyncWatchesAsync()
+    {
+        if (module is null || self is null)
+        {
+            return;
+        }
+        if (showColumns && columnsWatch is null)
+        {
+            columnsWatch = await module.InvokeAsync<IJSObjectReference>("observeColumns", columnsScroller, self);
+        }
+        else if (!showColumns && columnsWatch is not null)
+        {
+            await ReleaseAsync(columnsWatch);
+            columnsWatch = null;
+            fadeLeft = fadeRight = overflowing = false;
+            StateHasChanged();
+        }
+        if (openMenuTaskId is null && dismissWatch is not null)
+        {
+            await ReleaseAsync(dismissWatch);
+            dismissWatch = null;
+        }
+        if (focusSearch && toolbar is not null)
+        {
+            focusSearch = false;
+            await toolbar.FocusSearchAsync();
+        }
+    }
+
+    private async Task PopupReadyAsync(ElementReference popup)
+    {
+        if (module is null || self is null)
+        {
+            return;
+        }
+        if (dismissWatch is not null)
+        {
+            await ReleaseAsync(dismissWatch);
+        }
+        dismissWatch = await module.InvokeAsync<IJSObjectReference>("watchDismiss", popup, self);
+    }
+
+    [JSInvokable]
+    public Task ViewportChanged(bool mobile) => InvokeAsync(() =>
+    {
+        isMobile = mobile;
+        if (openMenuTaskId is { } id)
+        {
+            focusTaskId = id;
+            openMenuTaskId = null;
+        }
+        Refresh();
+        StateHasChanged();
+    });
+
+    [JSInvokable]
+    public Task ColumnsChanged(bool left, bool right, int visibleCount, bool isOverflowing) => InvokeAsync(() =>
+    {
+        fadeLeft = left;
+        fadeRight = right;
+        visibleColumns = visibleCount;
+        overflowing = isOverflowing;
+        StateHasChanged();
+    });
+
+    [JSInvokable]
+    public Task DismissMenu() => InvokeAsync(() =>
+    {
+        if (openMenuTaskId is { } id)
+        {
+            focusTaskId = id;
+            openMenuTaskId = null;
+            StateHasChanged();
+        }
+    });
 
     private async Task LoadAsync()
     {
@@ -118,12 +285,78 @@
         else
         {
             tasks = loaded.ToList();
-            Regroup();
+            if (filter.Executor != BoardFilter.AllExecutors
+                && filter.Executor != BoardFilter.Unassigned
+                && BoardRules.ExecutorOptions(tasks).All(option => option.Value != filter.Executor))
+            {
+                filter = filter with { Executor = BoardFilter.AllExecutors };
+            }
+            Refresh();
         }
         loading = false;
     }
 
-    private void Regroup() => columns = BoardRules.Group(tasks);
+    private void Refresh()
+    {
+        visible = BoardRules.Filter(tasks, filter, isMobile);
+        columns = BoardRules.Group(visible);
+        executorOptions = BoardRules.ExecutorOptions(tasks);
+        allCount = BoardRules.CountMatching(tasks, filter);
+        overdueCount = BoardRules.CountOverdueMatching(tasks, filter);
+        statusCounts = TaskStatuses.All.ToDictionary(status => status, status => BoardRules.CountStatus(tasks, filter, status));
+    }
+
+    private void ApplyFilter(BoardFilter next)
+    {
+        filter = next;
+        Refresh();
+        announceDelay?.Cancel();
+        announcement = BoardRules.ShownText(visible.Count);
+    }
+
+    private void SearchChanged(string text)
+    {
+        filter = filter with { Search = text };
+        Refresh();
+        announceDelay?.Cancel();
+        announceDelay?.Dispose();
+        announceDelay = new CancellationTokenSource();
+        _ = AnnounceAfterPauseAsync(announceDelay.Token);
+    }
+
+    private async Task AnnounceAfterPauseAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(500, token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+        await InvokeAsync(() =>
+        {
+            if (!token.IsCancellationRequested)
+            {
+                announcement = BoardRules.ShownText(visible.Count);
+                StateHasChanged();
+            }
+        });
+    }
+
+    private void ExecutorChanged(string value) => ApplyFilter(filter with { Executor = value });
+
+    private void ToggleOverdue() => ApplyFilter(filter with { OverdueOnly = !filter.OverdueOnly });
+
+    private void StatusChanged(string? status) => ApplyFilter(filter with { Status = status });
+
+    private void ShowAll() => ApplyFilter(filter with { OverdueOnly = false, Status = null });
+
+    private void ClearFilters()
+    {
+        ApplyFilter(new BoardFilter());
+        focusSearch = true;
+    }
 
     private void OpenMenu(long id) => openMenuTaskId = id;
 
@@ -200,7 +433,7 @@
         }
         var optimistic = original with { Condition = status };
         tasks[index] = optimistic;
-        Regroup();
+        Refresh();
         errorMessage = null;
         focusTaskId = original.Id;
         announcement = $"'{original.Title}' moved to {BoardStatus.Label(status)}.";
@@ -216,7 +449,7 @@
             if (current >= 0 && tasks[current].Condition == status)
             {
                 tasks[current] = saved;
-                Regroup();
+                Refresh();
             }
         }
         else if (result != SaveResult.Ok)
@@ -225,7 +458,7 @@
             if (current >= 0 && tasks[current].Condition == status)
             {
                 tasks[current] = original;
-                Regroup();
+                Refresh();
             }
             announcement = "";
             errorMessage = $"Could not change status of '{original.Title}'. Try again.";
@@ -234,14 +467,30 @@
         StateHasChanged();
     }
 
-    public async ValueTask DisposeAsync()
+    private static async Task ReleaseAsync(IJSObjectReference handle)
     {
         try
         {
-            if (keyGuard is not null)
+            await handle.InvokeVoidAsync("dispose");
+            await handle.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        announceDelay?.Cancel();
+        announceDelay?.Dispose();
+        try
+        {
+            foreach (var handle in new[] { keyGuard, viewportWatch, columnsWatch, dismissWatch })
             {
-                await keyGuard.InvokeVoidAsync("dispose");
-                await keyGuard.DisposeAsync();
+                if (handle is not null)
+                {
+                    await ReleaseAsync(handle);
+                }
             }
             if (module is not null)
             {
@@ -251,5 +500,6 @@
         catch (JSDisconnectedException)
         {
         }
+        self?.Dispose();
     }
 }
