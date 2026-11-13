@@ -35,4 +35,4 @@ public sealed record CountdownInput(int Seconds);
 public sealed record UserResponse(long Id, string Username, string FirstName, string LastName, string Email, string Role, string? AvatarPicture);
 public sealed record TagResponse(long Id, string Title, long? UniqueId);
 public sealed record TaskResponse(long Id, string Title, string? Description, DateOnly DateCreated, DateOnly DateUpdated,
-    DateOnly? DateToFinish, string Condition, short? Priority, UserResponse? Author, UserResponse? Executor, IEnumerable<TagResponse> Tag, bool IsOverdue);
+    DateOnly? DateToFinish, string Condition, short? Priority, UserResponse? Author, UserResponse? Executor, IEnumerable<TagResponse> Tag, bool IsOverdue, int? OverdueDays);
