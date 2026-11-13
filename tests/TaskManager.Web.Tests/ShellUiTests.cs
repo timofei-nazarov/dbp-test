@@ -27,8 +27,8 @@ public sealed class ShellUiTests
         return WebUtility.HtmlDecode(Regex.Replace(html, "<!--.*?-->", "", RegexOptions.Singleline));
     }
 
-    private static UserResponse Profile(string first, string last, string username) =>
-        new(1, username, first, last, "", "developer", null);
+    private static UserResponse Profile(string first, string last, string username, long id = 1) =>
+        new(id, username, first, last, "", "developer", null);
 
     [Fact]
     public async Task TopBarShowsInitialsUsernameAndSignOut()
@@ -36,9 +36,20 @@ public sealed class ShellUiTests
         var html = await RenderTopBar(true, Profile("Anna", "Smith", "anna"));
 
         Assert.Contains("Task board", html);
-        Assert.Matches("<span class=\"avatar\" aria-hidden=\"true\">AS</span>", html);
+        Assert.Matches("<span class=\"avatar avatar-tone-1\" aria-hidden=\"true\">AS</span>", html);
         Assert.Matches("<span class=\"topbar-username\">anna</span>", html);
         Assert.Matches("<button type=\"button\"[^>]*>Sign out</button>", html);
+    }
+
+    [Theory]
+    [InlineData(9, 1)]
+    [InlineData(7, 7)]
+    [InlineData(8, 0)]
+    public async Task TopBarAvatarToneIsUserIdModEight(long id, int tone)
+    {
+        var html = await RenderTopBar(true, Profile("Anna", "Smith", "anna", id));
+
+        Assert.Contains($"class=\"avatar avatar-tone-{tone}\"", html);
     }
 
     [Fact]

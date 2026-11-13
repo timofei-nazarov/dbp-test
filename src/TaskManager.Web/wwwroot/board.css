@@ -15,8 +15,27 @@
     --color-danger-text: #B91C1C;
     --color-danger-soft: #FEE2E2;
     --color-danger-softer: #FEF2F2;
+    --color-count: #DDE1E8;
+    --color-scroll-thumb: #A5B4FC;
+    --color-accent-strong: #4338CA;
     --color-overlay: rgba(0, 0, 0, 0.5);
     --color-control-border: var(--color-text-muted);
+    --avatar-0-bg: #E0E7FF;
+    --avatar-0-fg: #3730A3;
+    --avatar-1-bg: #DBEAFE;
+    --avatar-1-fg: #1E40AF;
+    --avatar-2-bg: #FEF3C7;
+    --avatar-2-fg: #92400E;
+    --avatar-3-bg: #EDE9FE;
+    --avatar-3-fg: #5B21B6;
+    --avatar-4-bg: #CCFBF1;
+    --avatar-4-fg: #115E59;
+    --avatar-5-bg: #DCFCE7;
+    --avatar-5-fg: #166534;
+    --avatar-6-bg: #FCE7F3;
+    --avatar-6-fg: #9D174D;
+    --avatar-7-bg: #FFEDD5;
+    --avatar-7-fg: #9A3412;
     --status-new: #9CA3AF;
     --status-in-development: #3B82F6;
     --status-in-qa: #F59E0B;
@@ -40,12 +59,23 @@
     --size-logo: 36px;
     --size-banner-icon: 16px;
     --size-auth-card: 400px;
-    --size-column-min: 220px;
-    --size-dialog: 420px;
+    --size-dialog: 380px;
+    --size-control: 36px;
+    --size-control-touch: 44px;
+    --size-column: 260px;
+    --size-avatar-card: 20px;
+    --size-move-button: 24px;
+    --size-popup: 200px;
+    --size-panel: 280px;
+    --size-fade: 48px;
+    --size-scrollbar: 6px;
     --size-field: 44px;
     --size-hairline: 1px;
     --size-border-strong: 2px;
     --font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --font-size-xs: 0.75rem;
+    --font-size-meta: 0.8125rem;
+    --font-size-avatar: 0.625rem;
     --font-size-sm: 0.875rem;
     --font-size-base: 1rem;
     --font-size-lg: 1.125rem;
@@ -73,8 +103,13 @@ body {
     line-height: 1.4;
 }
 
+.page,
+.topbar {
+    --gutter: var(--space-6);
+}
+
 .page {
-    padding: var(--space-4);
+    padding: var(--space-4) max(var(--gutter), env(safe-area-inset-right)) var(--space-4) max(var(--gutter), env(safe-area-inset-left));
 }
 
 .page h1 {
@@ -125,7 +160,7 @@ body {
     justify-content: space-between;
     gap: var(--space-2) var(--space-4);
     min-height: var(--size-topbar);
-    padding: var(--space-2) var(--space-4);
+    padding: var(--space-2) max(var(--gutter), env(safe-area-inset-right)) var(--space-2) max(var(--gutter), env(safe-area-inset-left));
     background: var(--color-card);
     border-bottom: var(--size-hairline) solid var(--color-border);
 }
@@ -163,6 +198,46 @@ body {
     font-weight: var(--font-weight-bold);
 }
 
+.avatar-tone-0 {
+    background: var(--avatar-0-bg);
+    color: var(--avatar-0-fg);
+}
+
+.avatar-tone-1 {
+    background: var(--avatar-1-bg);
+    color: var(--avatar-1-fg);
+}
+
+.avatar-tone-2 {
+    background: var(--avatar-2-bg);
+    color: var(--avatar-2-fg);
+}
+
+.avatar-tone-3 {
+    background: var(--avatar-3-bg);
+    color: var(--avatar-3-fg);
+}
+
+.avatar-tone-4 {
+    background: var(--avatar-4-bg);
+    color: var(--avatar-4-fg);
+}
+
+.avatar-tone-5 {
+    background: var(--avatar-5-bg);
+    color: var(--avatar-5-fg);
+}
+
+.avatar-tone-6 {
+    background: var(--avatar-6-bg);
+    color: var(--avatar-6-fg);
+}
+
+.avatar-tone-7 {
+    background: var(--avatar-7-bg);
+    color: var(--avatar-7-fg);
+}
+
 .topbar-username {
     min-width: 0;
     overflow: hidden;
@@ -184,7 +259,7 @@ body {
 
 .columns {
     display: grid;
-    grid-template-columns: repeat(7, minmax(var(--size-column-min), 1fr));
+    grid-template-columns: repeat(7, minmax(var(--size-column), 1fr));
     gap: var(--space-3);
     align-items: start;
     overflow-x: auto;
@@ -491,6 +566,28 @@ button.danger {
 
 .field input:focus-visible {
     box-shadow: var(--shadow-focus-halo);
+}
+
+@media (max-width: 1023.98px) {
+    .page,
+    .topbar {
+        --gutter: var(--space-5);
+    }
+}
+
+@media (max-width: 639.98px) {
+    .page,
+    .topbar {
+        --gutter: var(--space-4);
+    }
+
+    .topbar-username {
+        display: none;
+    }
+
+    .topbar-user .button-secondary {
+        min-height: var(--size-control-touch);
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {

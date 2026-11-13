@@ -8,7 +8,7 @@
         <div class="topbar-user">
             @if (Profile is not null)
             {
-                <span class="avatar" aria-hidden="true">@BoardRules.Initials(Profile.FirstName, Profile.LastName, Profile.Username)</span>
+                <span class="avatar avatar-tone-@BoardRules.AvatarTone(Profile.Id)" aria-hidden="true">@BoardRules.Initials(Profile.FirstName, Profile.LastName, Profile.Username)</span>
                 <span class="topbar-username">@Profile.Username</span>
             }
             <button type="button" class="button-secondary" @onclick="OnSignOut">Sign out</button>
