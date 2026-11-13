@@ -5,13 +5,17 @@
          role="dialog"
          aria-modal="true"
          aria-labelledby="archive-title"
-         aria-describedby="archive-text"
+         aria-describedby="archive-text archive-hint"
          @ref="dialog"
          @onkeydown="OnKeyDown">
-        <h2 id="archive-title">Archive this task?</h2>
-        <p id="archive-text">"@Title" will move to Archived.</p>
+        <div class="dialog-head">
+            <span class="dialog-icon" aria-hidden="true"><Icon Name="trash" /></span>
+            <h2 id="archive-title">Archive this task?</h2>
+        </div>
+        <p id="archive-text" class="dialog-text">"@Title" will move to Archived.</p>
+        <p id="archive-hint" class="dialog-hint">You can move it back from the Archived column.</p>
         <div class="dialog-actions">
-            <button type="button" @ref="cancelButton" @onclick="OnCancel">Cancel</button>
+            <button type="button" class="button-secondary" @ref="cancelButton" @onclick="OnCancel">Cancel</button>
             <button type="button" class="danger" @onclick="OnConfirm">Archive</button>
         </div>
     </div>

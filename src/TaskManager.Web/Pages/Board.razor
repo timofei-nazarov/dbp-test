@@ -98,6 +98,15 @@
             </div>
         }
     </div>
+    @if (isMobile && openMenuTaskId is { } sheetId && tasks.FirstOrDefault(item => item.Id == sheetId) is { } sheetTask)
+    {
+        <StatusSheet TaskId="sheetTask.Id"
+                     TaskTitle="@sheetTask.Title"
+                     Condition="@sheetTask.Condition"
+                     Module="module"
+                     OnChoose="ChooseFromSheetAsync"
+                     OnClose="CloseSheet" />
+    }
     @if (pendingArchive is not null && module is not null)
     {
         <ArchiveDialog Title="@pendingArchive.Title"
@@ -142,7 +151,7 @@
     private string announcement = "";
     private string? errorMessage;
 
-    private bool boardInert => pendingArchive is not null;
+    private bool boardInert => pendingArchive is not null || (isMobile && openMenuTaskId is not null);
 
     private bool noMatch => ready && !loading && !loadFailed && tasks.Count > 0 && visible.Count == 0;
 
@@ -364,6 +373,23 @@
     {
         if (openMenuTaskId == id)
         {
+            openMenuTaskId = null;
+        }
+    }
+
+    private async Task ChooseFromSheetAsync(string status)
+    {
+        if (openMenuTaskId is { } id)
+        {
+            await SelectStatusAsync((id, status));
+        }
+    }
+
+    private void CloseSheet()
+    {
+        if (openMenuTaskId is { } id)
+        {
+            focusTaskId = id;
             openMenuTaskId = null;
         }
     }

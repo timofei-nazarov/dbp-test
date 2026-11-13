@@ -321,4 +321,24 @@ public sealed class BoardUiTests
 
         Assert.Matches("<button[^>]*class=\"chip\"[^>]*aria-pressed=\"true\"[^>]*>All 5</button>", html);
     }
+
+    [Fact]
+    public async Task StatusSheetIsModalDialogNamedMoveTaskWithOptionsAndCancel()
+    {
+        var html = await RenderComponent<StatusSheet>(new()
+        {
+            ["TaskId"] = 9L,
+            ["TaskTitle"] = "Ship it",
+            ["Condition"] = "in_qa"
+        });
+
+        Assert.Contains("role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"sheet-title\"", html);
+        Assert.Contains("<h2 id=\"sheet-title\">Move task</h2>", html);
+        Assert.Contains("Ship it", html);
+        Assert.Equal(7, Regex.Matches(html, "role=\"option\"").Count);
+        Assert.Contains("tabindex=\"0\"", html);
+        Assert.Contains(">Cancel</button>", html);
+        Assert.Contains("sheet-backdrop", html);
+        Assert.DoesNotContain("role=\"status\"", html);
+    }
 }
